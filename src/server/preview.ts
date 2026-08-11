@@ -48,7 +48,7 @@ function render_icon(icon: Display_icon, x: number, y: number) {
   if (icon === 'battery') return `<g transform="translate(${x} ${y})" ${stroke}><rect x="2" y="8" width="30" height="18" rx="2"/><path d="M35 14v6"/><path d="M7 13h12v8H7z" fill="#26322a"/></g>`
   if (icon === 'alert') return `<g transform="translate(${x} ${y})" ${stroke}><path d="M20 3 38 35H2z"/><path d="M20 13v10"/><circle cx="20" cy="29" r="1" fill="#26322a"/></g>`
   if (icon === 'system') return `<g transform="translate(${x} ${y})" ${stroke}><rect x="4" y="4" width="32" height="24" rx="2"/><path d="M12 35h16M20 28v7"/></g>`
-  return `<g transform="translate(${x} ${y})" ${stroke}><path d="M20 3v17"/><path d="M20 20 8 32"/><path d="M20 20 32 32"/><path d="M10 10 4 16M30 10l6 6"/></g>`
+  return `<g transform="translate(${x} ${y})" ${stroke}><path d="M4 34h32"/><path d="M8 30V20"/><path d="M20 30V12"/><path d="M32 30V4"/></g>`
 }
 
 function render_progress(progress: NonNullable<Display_document['progress']>) {

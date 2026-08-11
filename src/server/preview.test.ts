@@ -36,7 +36,7 @@ describe('fallback preview', () => {
     const rendered = render_device_bitmap({ title: 'Token balance', icon: 'usage', progress: { value: 72, max: 100, label: 'Used', unit: 'tokens' } })
     expect(rendered.preview_svg).toContain('width="344"')
     expect(rendered.preview_svg).toContain('72%')
-    expect(rendered.preview_svg).toContain('M20 3v17')
+    expect(rendered.preview_svg).toContain('M4 34h32')
     expect(rendered.device_image).toHaveLength(MONO1_IMAGE_BYTES)
   })
 
