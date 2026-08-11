@@ -31,4 +31,18 @@ describe('fallback preview', () => {
     expect(rendered.device_image.some((byte) => byte !== 0)).toBe(true)
     expect(rendered.preview_svg).toContain('今日の使用量')
   })
+
+  test('renders semantic icons and a bounded token progress meter', () => {
+    const rendered = render_device_bitmap({ title: 'Token balance', icon: 'usage', progress: { value: 72, max: 100, label: 'Used', unit: 'tokens' } })
+    expect(rendered.preview_svg).toContain('width="344"')
+    expect(rendered.preview_svg).toContain('72%')
+    expect(rendered.preview_svg).toContain('M20 3v17')
+    expect(rendered.device_image).toHaveLength(MONO1_IMAGE_BYTES)
+  })
+
+  test('clamps an over-limit progress value', () => {
+    const rendered = render_display_preview({ title: 'Usage', progress: { value: 200, max: 100 } })
+    expect(rendered).toContain('100%')
+    expect(rendered).toContain('width="338"')
+  })
 })

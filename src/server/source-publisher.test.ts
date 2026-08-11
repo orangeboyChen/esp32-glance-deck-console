@@ -13,6 +13,8 @@ describe('bound source document rendering', () => {
     })).toEqual({
       title: 'Pro usage',
       subtitle: 'Resets tomorrow',
+      icon: 'usage',
+      progress: { value: 72, max: 100, label: 'Used', unit: '%' },
       lines: [{ label: 'Today', value: '72 / 100 %' }, { label: 'Remaining', value: '—' }],
     })
   })

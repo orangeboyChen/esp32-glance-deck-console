@@ -14,9 +14,19 @@ export function template_value(value: string, values: SourceValues) {
 }
 
 export function render_bound_document(template: Display_document, values: SourceValues): Display_document {
+  const used = typeof values.used === 'number' ? values.used : Number(values.used)
+  const total = typeof values.total === 'number' ? values.total : Number(values.total)
+  const inferred_progress = Number.isFinite(used) && Number.isFinite(total) ? { value: used, max: total, label: 'Used', unit: String(values.unit ?? '') } : undefined
   return {
     title: template_value(template.title, values),
     subtitle: template.subtitle ? template_value(template.subtitle, values) : undefined,
+    icon: template.icon ?? (inferred_progress ? 'usage' : undefined),
+    progress: template.progress ? {
+      value: Number(template_value(String(template.progress.value), values)),
+      max: Number(template_value(String(template.progress.max), values)),
+      label: template.progress.label ? template_value(template.progress.label, values) : undefined,
+      unit: template.progress.unit ? template_value(template.progress.unit, values) : undefined,
+    } : inferred_progress,
     lines: template.lines?.map((line) => ({ label: template_value(line.label, values), value: template_value(line.value, values) })),
   }
 }

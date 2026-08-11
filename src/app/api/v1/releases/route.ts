@@ -10,7 +10,7 @@ import { MONO1_IMAGE_FORMAT, render_device_bitmap } from '@/server/preview'
 import { current_administrator } from '@/server/session'
 import { devices, display_release_pages, display_releases } from '@/server/schema'
 
-const document_schema = z.object({ title: z.string().min(1).max(48), subtitle: z.string().max(80).optional(), lines: z.array(z.object({ label: z.string().max(48), value: z.string().max(48) })).max(7).optional() })
+const document_schema = z.object({ title: z.string().min(1).max(48), subtitle: z.string().max(80).optional(), icon: z.enum(['usage', 'alert', 'battery', 'wifi', 'system']).optional(), progress: z.object({ value: z.union([z.number(), z.string().max(48)]), max: z.union([z.number(), z.string().max(48)]), label: z.string().max(48).optional(), unit: z.string().max(16).optional() }).optional(), lines: z.array(z.object({ label: z.string().max(48), value: z.string().max(48) })).max(7).optional() })
 const page_schema = z.object({ page_id: z.string().regex(/^[a-z0-9-]{1,64}$/), document: document_schema })
 const release_schema = z.object({
   active_page_id: z.string().regex(/^[a-z0-9-]{1,64}$/),

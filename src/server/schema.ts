@@ -127,6 +127,8 @@ export const display_bindings = pgTable('display_bindings', {
   document_template: jsonb('document_template').$type<{
     title: string
     subtitle?: string
+    icon?: 'usage' | 'alert' | 'battery' | 'wifi' | 'system'
+    progress?: { value: number | string; max: number | string; label?: string; unit?: string }
     lines?: Array<{ label: string; value: string }>
   }>().notNull(),
   device_ids: jsonb('device_ids').$type<string[]>().notNull(),
