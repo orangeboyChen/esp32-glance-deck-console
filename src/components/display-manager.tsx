@@ -48,7 +48,7 @@ export function DisplayManager() {
   }, [active_page_id])
 
   const active_page = pages.find((page) => page.page_id === active_page_id) ?? pages[0]
-  const update_document = (field: keyof Document, value: string) => {
+  const update_document = (field: keyof Document, value: string | number) => {
     if (!active_page) return
     set_pages(pages.map((page) => page.page_id === active_page.page_id ? { ...page, document: { ...page.document, [field]: value } } : page))
   }
