@@ -79,8 +79,8 @@ function render_progress(progress: Display_progress, index: number, detail?: Usa
   const label = progress.label ? `${escape_xml(progress.label)} ` : ''
   const unit = progress.unit ? ` ${escape_xml(progress.unit)}` : ''
   const historical_usage = detail !== undefined
-  const label_y = historical_usage ? [100, 142, 184][index] ?? 100 : [110, 144, 178][index] ?? 110
-  const bar_y = historical_usage ? [106, 148, 190][index] ?? 106 : [122, 156, 190][index] ?? 122
+  const label_y = historical_usage ? [96, 150, 204][index] ?? 96 : [110, 144, 178][index] ?? 110
+  const bar_y = historical_usage ? [102, 156, 210][index] ?? 102 : [122, 156, 190][index] ?? 122
   const detail_y = bar_y + 22
   const remaining = detail?.remaining ? `<text x="28" y="${detail_y}" font-family="Noto Sans CJK" font-size="11" fill="#627168">${escape_xml(detail.remaining)} left</text>` : ''
   const resets_at = detail?.resets_at ? `<text x="372" y="${detail_y}" text-anchor="end" font-family="Noto Sans CJK" font-size="11" fill="#627168">resets ${escape_xml(detail.resets_at)}</text>` : ''

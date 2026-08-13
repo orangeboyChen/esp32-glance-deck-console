@@ -63,7 +63,7 @@ describe('fallback preview', () => {
     expect(rendered).toContain('y="190"')
   })
 
-  test('preserves the historical Usage details layout', () => {
+  test('spaces Usage detail groups at the documented 54 px pitch', () => {
     const rendered = render_display_preview({
       title: 'Usage',
       subtitle: 'Codex',
@@ -83,8 +83,10 @@ describe('fallback preview', () => {
     expect(rendered).toContain('resets 8/13 00:05')
     expect(rendered).toContain('$312.80 left')
     expect(rendered).toContain('translate(346 16)')
-    expect(rendered).toContain('y="128"')
-    expect(rendered).toContain('y="108" width="61" height="4"')
+    expect(rendered).toContain('y="124"')
+    expect(rendered).toContain('y="178"')
+    expect(rendered).toContain('y="232"')
+    expect(rendered).toContain('y="104" width="61" height="4"')
     expect(rendered).toContain('shape-rendering="crispEdges"')
   })
 })
