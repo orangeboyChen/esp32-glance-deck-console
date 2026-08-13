@@ -110,6 +110,7 @@ type OtaStateMessage = {
   job_id: string
   phase: 'downloading' | 'verifying' | 'rebooting' | 'healthy' | 'rolled_back' | 'failed'
   error_message?: string
+  progress_percent?: number
 }
 
 export function is_device_state(value: unknown): value is DeviceStateMessage {
@@ -144,6 +145,7 @@ export function is_ota_state(value: unknown): value is OtaStateMessage {
   return typeof message.job_id === 'string'
     && valid_phase
     && (message.error_message === undefined || typeof message.error_message === 'string')
+    && (message.progress_percent === undefined || (typeof message.progress_percent === 'number' && Number.isInteger(message.progress_percent) && message.progress_percent >= 0 && message.progress_percent <= 100))
 }
 
 export async function consume_device_state(topic: string, payload: Buffer) {

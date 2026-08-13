@@ -10,7 +10,8 @@ import { MONO1_IMAGE_FORMAT, render_device_bitmap } from '@/server/preview'
 import { current_administrator } from '@/server/session'
 import { devices, display_release_pages, display_releases } from '@/server/schema'
 
-const document_schema = z.object({ title: z.string().min(1).max(48), subtitle: z.string().max(80).optional(), icon: z.enum(['usage', 'alert', 'battery', 'wifi', 'system']).optional(), progress: z.object({ value: z.union([z.number(), z.string().max(48)]), max: z.union([z.number(), z.string().max(48)]), label: z.string().max(48).optional(), unit: z.string().max(16).optional() }).optional(), lines: z.array(z.object({ label: z.string().max(48), value: z.string().max(48) })).max(7).optional() })
+const progress_schema = z.object({ value: z.union([z.number(), z.string().max(48)]), max: z.union([z.number(), z.string().max(48)]), label: z.string().max(48).optional(), unit: z.string().max(16).optional() })
+const document_schema = z.object({ title: z.string().min(1).max(48), subtitle: z.string().max(80).optional(), icon: z.enum(['usage', 'battery', 'wifi', 'system', 'home']).optional(), progress: progress_schema.optional(), progresses: z.array(progress_schema).min(1).max(3).optional(), lines: z.array(z.object({ label: z.string().max(48), value: z.string().max(48) })).max(7).optional() })
 const page_schema = z.object({ page_id: z.string().regex(/^[a-z0-9-]{1,64}$/), document: document_schema })
 const release_schema = z.object({
   active_page_id: z.string().regex(/^[a-z0-9-]{1,64}$/),
@@ -22,6 +23,7 @@ const release_schema = z.object({
   }
   const page_ids = new Set(release.pages.map((page) => page.page_id))
   if (page_ids.size !== release.pages.length) context.addIssue({ code: 'custom', message: 'page_ids_must_be_unique', path: ['pages'] })
+  if (!page_ids.has('system')) context.addIssue({ code: 'custom', message: 'system_page_required', path: ['pages'] })
 })
 
 export async function POST(request: Request) {
@@ -29,7 +31,8 @@ export async function POST(request: Request) {
   if (!db) return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
   const body = release_schema.safeParse(await request.json())
   if (!body.success) return NextResponse.json({ error: 'invalid_release', issues: body.error.issues }, { status: 400 })
-  const rendered_pages = body.data.pages.map((page, position) => {
+  const ordered_pages = [...body.data.pages.filter((page) => page.page_id !== 'system'), ...body.data.pages.filter((page) => page.page_id === 'system')]
+  const rendered_pages = ordered_pages.map((page, position) => {
     const rendered = render_device_bitmap(page.document)
     return { ...page, position, ...rendered, content_sha256: createHash('sha256').update(rendered.device_image).digest('hex') }
   })

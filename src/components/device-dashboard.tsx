@@ -1,7 +1,7 @@
 'use client'
 
 import { Alert, Block, Button, Checkbox, Empty, Flexbox, Segmented, Tag, Text, Tooltip, toast } from '@lobehub/ui'
-import { ArrowDown, ArrowUp, Bell, CircleAlert, ChevronRight, Cpu, Database, Monitor, PanelsTopLeft, Plus, Radio, RefreshCw, Settings, Wifi } from 'lucide-react'
+import { ArrowDown, ArrowUp, BatteryMedium, Bell, ChartNoAxesCombined, CircleAlert, ChevronRight, Cpu, Database, Gauge, Monitor, PanelsTopLeft, Plus, Radio, RefreshCw, Settings, Wifi } from 'lucide-react'
 import { useAtom, useSetAtom } from 'jotai'
 import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
@@ -35,6 +35,32 @@ function status_color(status: DeviceSummary['status']) {
   if (status === 'error') return 'red'
   if (status === 'offline') return 'default'
   return 'gold'
+}
+
+function UsageMeter({ values, translate }: { values: DeviceSummary['source_values']; translate: ReturnType<typeof useTranslations<'Dashboard'>> }) {
+  const used = typeof values?.used === 'number' ? values.used : null
+  const total = typeof values?.total === 'number' && values.total > 0 ? values.total : null
+  const remaining = typeof values?.remaining === 'number' ? values.remaining : total !== null && used !== null ? Math.max(0, total - used) : null
+  const percent = typeof values?.today_percent === 'number'
+    ? values.today_percent
+    : used !== null && total !== null
+      ? Math.min(100, Math.max(0, (used / total) * 100))
+      : null
+  return (
+    <section aria-label={translate('tokenBalance')} className="usage-meter">
+      <Flexbox horizontal align="center" justify="space-between" gap={10}>
+        <Flexbox horizontal align="center" gap={8}><Gauge aria-hidden size={18} /><Text strong>{translate('tokenBalance')}</Text></Flexbox>
+        <Text className="usage-meter-value" type="secondary">{remaining !== null ? translate('tokensRemaining', { value: remaining }) : translate('unavailable')}</Text>
+      </Flexbox>
+      <div aria-label={percent !== null ? translate('usageProgress', { percent: Math.round(percent) }) : translate('usageUnavailable')} aria-valuemax={100} aria-valuemin={0} aria-valuenow={percent ?? 0} className="usage-progress" role="progressbar">
+        <span style={{ width: `${percent ?? 0}%` }} />
+      </div>
+      <Flexbox horizontal align="center" justify="space-between" gap={8}>
+        <Text type="secondary">{used !== null && total !== null ? translate('tokensUsed', { used, total }) : translate('usageUnavailable')}</Text>
+        {typeof values?.unit === 'string' && <Text type="secondary">{values.unit}</Text>}
+      </Flexbox>
+    </section>
+  )
 }
 
 export function DeviceDashboard({ devices, summary }: DeviceDashboardProps) {
@@ -166,7 +192,7 @@ export function DeviceDashboard({ devices, summary }: DeviceDashboardProps) {
           <Text type="secondary">{translate('activeAlerts')}</Text>
         </Block>
         <Block className="summary-item" variant="outlined">
-          <RefreshCw aria-hidden className="summary-icon" />
+          <ChartNoAxesCombined aria-hidden className="summary-icon" />
           <strong>{summary.source_updates_today}</strong>
           <Text type="secondary">{translate('sourceUpdatesToday')}</Text>
         </Block>
@@ -232,6 +258,11 @@ export function DeviceDashboard({ devices, summary }: DeviceDashboardProps) {
                     <Flexbox gap={4}>
                       <h3>{device.name}</h3>
                       <Text type="secondary">{device.firmware_version ?? translate('firmwarePending')}</Text>
+                    </Flexbox>
+                    <UsageMeter values={device.source_values} translate={translate} />
+                    <Flexbox className="device-power" horizontal align="center" gap={8}>
+                      <BatteryMedium aria-hidden size={17} />
+                      <Text type="secondary">{device.battery_percent !== null ? translate('batteryStatus', { percent: device.battery_percent }) : translate('batteryUnavailable')}</Text>
                     </Flexbox>
                     <Flexbox className="device-actions" horizontal gap={10} wrap="wrap">
                       <Button icon={ChevronRight} iconPosition="end" onClick={() => select_device(device)} size="large" type="primary">

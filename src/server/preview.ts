@@ -1,22 +1,26 @@
+import { join } from 'node:path'
+
+import { Resvg } from '@resvg/resvg-js'
+
 export const fallback_preview_svg = `
 <svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
   <rect width="400" height="300" fill="#f2f4ed"/>
-  <rect x="8" y="8" width="384" height="284" fill="none" stroke="#26322a" stroke-width="4"/>
-  <text x="28" y="48" font-family="Noto Sans CJK" font-size="12" font-weight="700" fill="#26322a">GLANCE DECK</text>
-  <text x="28" y="95" font-family="Noto Sans CJK" font-size="12" fill="#627168">WAITING FOR PAIRING</text>
-  <text x="28" y="157" font-family="Noto Sans CJK" font-size="42" fill="#26322a">—</text>
-  <text x="28" y="204" font-family="Noto Sans CJK" font-size="13" fill="#627168">Pair a device, then publish</text>
-  <text x="28" y="224" font-family="Noto Sans CJK" font-size="13" fill="#627168">its first display release.</text>
-  <text x="28" y="275" font-family="Noto Sans CJK" font-size="10" font-weight="700" fill="#26322a">400 × 300</text>
+  <text x="28" y="52" font-family="Noto Sans CJK" font-size="26" fill="#26322a">WAITING</text>
+  <text x="28" y="74" font-family="Noto Sans CJK" font-size="12" fill="#627168">Pair a device, then publish its first release.</text>
+  <text x="28" y="145" font-family="Noto Sans CJK" font-size="42" fill="#26322a">—</text>
+  <text x="28" y="282" font-family="Noto Sans CJK" font-size="10" font-weight="700" fill="#627168">400 × 300</text>
 </svg>`.trim()
 
-export type Display_icon = 'usage' | 'alert' | 'battery' | 'wifi' | 'system'
+export type Display_icon = 'usage' | 'battery' | 'wifi' | 'system' | 'home'
+export type Display_progress = { value: number | string; max: number | string; label?: string; unit?: string }
 
 export type Display_document = {
   title: string
   subtitle?: string
   icon?: Display_icon
-  progress?: { value: number | string; max: number | string; label?: string; unit?: string }
+  /** Legacy single-meter document field. New documents use `progresses`. */
+  progress?: Display_progress
+  progresses?: Display_progress[]
   lines?: Array<{ label: string; value: string }>
 }
 
@@ -32,26 +36,32 @@ function escape_xml(value: string) {
 export function render_display_preview(document: Display_document) {
   const title = escape_xml(document.title)
   const subtitle = document.subtitle ? escape_xml(document.subtitle) : ''
-  const icon = document.icon ? render_icon(document.icon, 28, 27) : ''
-  const title_left = document.icon ? 58 : 28
-  const progress = document.progress ? render_progress(document.progress) : ''
-  const lines = (document.lines ?? []).slice(0, document.progress ? 4 : 7).map((line, index) => {
-    const y = (document.progress ? 191 : 135) + index * 24
+  const icon = document.icon ? render_icon(document.icon, 28, 22) : ''
+  const title_left = document.icon ? 70 : 28
+  const progresses = normalized_progresses(document)
+  const progress = progresses.map(render_progress).join('')
+  const line_start = progresses.length === 3 ? 228 : progresses.length === 2 ? 215 : progresses.length ? 191 : 110
+  const lines = (document.lines ?? []).slice(0, progresses.length ? 4 : 7).map((line, index) => {
+    const y = line_start + index * 24
     return `<text x="28" y="${y}" font-family="Noto Sans CJK" font-size="13" fill="#627168">${escape_xml(line.label)}</text><text x="372" y="${y}" text-anchor="end" font-family="Noto Sans CJK" font-size="16" font-weight="700" fill="#26322a">${escape_xml(line.value)}</text>`
   }).join('')
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><rect width="400" height="300" fill="#f2f4ed"/><rect x="8" y="8" width="384" height="284" fill="none" stroke="#26322a" stroke-width="4"/>${icon}<text x="${title_left}" y="48" font-family="Noto Sans CJK" font-size="12" font-weight="700" fill="#26322a">GLANCE DECK</text><text x="28" y="88" font-family="Noto Sans CJK" font-size="27" fill="#26322a">${title}</text><text x="28" y="111" font-family="Noto Sans CJK" font-size="12" fill="#627168">${subtitle}</text>${progress}${lines}<line x1="28" x2="372" y1="254" y2="254" stroke="#9ba89f"/><text x="28" y="274" font-family="Noto Sans CJK" font-size="10" fill="#627168">IMMUTABLE DISPLAY RELEASE</text></svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><rect width="400" height="300" fill="#f2f4ed"/>${icon}<text x="${title_left}" y="52" font-family="Noto Sans CJK" font-size="26" fill="#26322a">${title}</text><text x="28" y="74" font-family="Noto Sans CJK" font-size="12" fill="#627168">${subtitle}</text>${progress}${lines}<line x1="28" x2="372" y1="266" y2="266" stroke="#9ba89f"/><text x="28" y="282" font-family="Noto Sans CJK" font-size="10" fill="#627168">IMMUTABLE DISPLAY RELEASE</text></svg>`
 }
 
 function render_icon(icon: Display_icon, x: number, y: number) {
   const stroke = 'stroke="#26322a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"'
   if (icon === 'wifi') return `<g transform="translate(${x} ${y})" ${stroke}><path d="M2 12 Q20 -3 38 12"/><path d="M9 20 Q20 10 31 20"/><circle cx="20" cy="28" r="2" fill="#26322a"/></g>`
   if (icon === 'battery') return `<g transform="translate(${x} ${y})" ${stroke}><rect x="2" y="8" width="30" height="18" rx="2"/><path d="M35 14v6"/><path d="M7 13h12v8H7z" fill="#26322a"/></g>`
-  if (icon === 'alert') return `<g transform="translate(${x} ${y})" ${stroke}><path d="M20 3 38 35H2z"/><path d="M20 13v10"/><circle cx="20" cy="29" r="1" fill="#26322a"/></g>`
   if (icon === 'system') return `<g transform="translate(${x} ${y})" ${stroke}><rect x="4" y="4" width="32" height="24" rx="2"/><path d="M12 35h16M20 28v7"/></g>`
-  return `<g transform="translate(${x} ${y})" ${stroke}><path d="M4 34h32"/><path d="M8 30V20"/><path d="M20 30V12"/><path d="M32 30V4"/></g>`
+  if (icon === 'home') return `<g transform="translate(${x} ${y})" ${stroke}><path d="m4 19 16-14 16 14v16H4z"/><path d="M16 35V23h8v12"/></g>`
+  return `<g transform="translate(${x} ${y})" ${stroke}><path d="m3 25 8-8 5 5 13-13"/><path d="M19 6h10v10"/></g>`
 }
 
-function render_progress(progress: NonNullable<Display_document['progress']>) {
+function normalized_progresses(document: Display_document) {
+  return (document.progresses?.length ? document.progresses : document.progress ? [document.progress] : []).slice(0, 3)
+}
+
+function render_progress(progress: Display_progress, index: number) {
   const raw_max = Number(progress.max)
   const raw_value = Number(progress.value)
   const max = Number.isFinite(raw_max) && raw_max > 0 ? raw_max : 0
@@ -60,7 +70,9 @@ function render_progress(progress: NonNullable<Display_document['progress']>) {
   const width = Math.round(344 * percent / 100)
   const label = progress.label ? `${escape_xml(progress.label)} ` : ''
   const unit = progress.unit ? ` ${escape_xml(progress.unit)}` : ''
-  return `<text x="28" y="137" font-family="Noto Sans CJK" font-size="13" fill="#627168">${label}${percent}%</text><text x="372" y="137" text-anchor="end" font-family="Noto Sans CJK" font-size="13" font-weight="700" fill="#26322a">${value} / ${max}${unit}</text><rect x="28" y="148" width="344" height="14" rx="7" fill="none" stroke="#26322a" stroke-width="3"/><rect x="31" y="151" width="${Math.max(0, width - 6)}" height="8" rx="4" fill="#26322a"/>`
+  const label_y = [110, 144, 178][index] ?? 110
+  const bar_y = [122, 156, 190][index] ?? 122
+  return `<text x="28" y="${label_y}" font-family="Noto Sans CJK" font-size="13" fill="#627168">${label}${percent}%</text><text x="372" y="${label_y}" text-anchor="end" font-family="Noto Sans CJK" font-size="13" font-weight="700" fill="#26322a">${value} / ${max}${unit}</text><rect x="28" y="${bar_y}" width="344" height="8" rx="4" fill="none" stroke="#26322a" stroke-width="2"/><rect x="30" y="${bar_y + 2}" width="${Math.max(0, width - 4)}" height="4" rx="2" fill="#26322a"/>`
 }
 
 /**
@@ -73,7 +85,7 @@ export function render_device_bitmap(document: Display_document): Rendered_displ
   const pixels = new Resvg(preview_svg, {
     background: '#f2f4ed',
     font: {
-      fontDirs: bundled_cjk_font_dirs,
+      fontFiles: bundled_cjk_font_files,
       loadSystemFonts: false,
       sansSerifFamily: 'Noto Sans CJK',
     },
@@ -90,16 +102,9 @@ export function render_device_bitmap(document: Display_document): Rendered_displ
   }
   return { preview_svg, device_image }
 }
-import { join } from 'node:path'
-
-import { Resvg } from '@resvg/resvg-js'
-
 export const DISPLAY_WIDTH = 400
 export const DISPLAY_HEIGHT = 300
 export const MONO1_IMAGE_BYTES = DISPLAY_WIDTH * DISPLAY_HEIGHT / 8
 export const MONO1_IMAGE_FORMAT = 'mono1-msb'
 
-const bundled_cjk_font_dirs = [
-  join(process.cwd(), 'node_modules', '@fontsource', 'noto-sans-sc', 'files'),
-  join(process.cwd(), 'node_modules', '@fontsource', 'noto-sans-jp', 'files'),
-]
+const bundled_cjk_font_files = [join(process.cwd(), 'assets', 'fonts', 'NotoSansSC-Regular.ttf')]

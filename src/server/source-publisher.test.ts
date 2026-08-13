@@ -22,4 +22,24 @@ describe('bound source document rendering', () => {
   test('preserves unsupported interpolation syntax and substitutes a missing value', () => {
     expect(template_value('{{unknown}} / {{UPPER}} / {{used}}', { used: 8 })).toBe('— / {{UPPER}} / 8')
   })
+
+  test('interpolates all bounded usage meters without retaining legacy progress', () => {
+    expect(render_bound_document({
+      title: 'Usage',
+      progresses: [
+        { label: 'Day', value: '{{day_used}}', max: '{{day_total}}', unit: 'USD' },
+        { label: 'Week', value: '{{week_used}}', max: '{{week_total}}', unit: 'USD' },
+        { label: 'Month', value: '{{month_used}}', max: '{{month_total}}', unit: 'USD' },
+      ],
+    }, {
+      day_used: 79, day_total: 776, week_used: 618, week_total: 2054, month_used: 2068, month_total: 8216,
+    })).toMatchObject({
+      title: 'Usage',
+      progresses: [
+        { label: 'Day', value: 79, max: 776, unit: 'USD' },
+        { label: 'Week', value: 618, max: 2054, unit: 'USD' },
+        { label: 'Month', value: 2068, max: 8216, unit: 'USD' },
+      ],
+    })
+  })
 })

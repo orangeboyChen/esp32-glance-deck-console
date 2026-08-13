@@ -36,13 +36,30 @@ describe('fallback preview', () => {
     const rendered = render_device_bitmap({ title: 'Token balance', icon: 'usage', progress: { value: 72, max: 100, label: 'Used', unit: 'tokens' } })
     expect(rendered.preview_svg).toContain('width="344"')
     expect(rendered.preview_svg).toContain('72%')
-    expect(rendered.preview_svg).toContain('M4 34h32')
+    expect(rendered.preview_svg).toContain('m3 25 8-8 5 5 13-13')
     expect(rendered.device_image).toHaveLength(MONO1_IMAGE_BYTES)
   })
 
   test('clamps an over-limit progress value', () => {
     const rendered = render_display_preview({ title: 'Usage', progress: { value: 200, max: 100 } })
     expect(rendered).toContain('100%')
-    expect(rendered).toContain('width="338"')
+    expect(rendered).toContain('width="340"')
+  })
+
+  test('renders three bounded usage meters at the documented row positions', () => {
+    const rendered = render_display_preview({
+      title: 'Usage',
+      progresses: [
+        { label: 'Day', value: 79, max: 776, unit: 'USD' },
+        { label: 'Week', value: 618, max: 2054, unit: 'USD' },
+        { label: 'Month', value: 2068, max: 8216, unit: 'USD' },
+      ],
+    })
+    expect(rendered).toContain('y="110"')
+    expect(rendered).toContain('y="144"')
+    expect(rendered).toContain('y="178"')
+    expect(rendered).toContain('y="122"')
+    expect(rendered).toContain('y="156"')
+    expect(rendered).toContain('y="190"')
   })
 })

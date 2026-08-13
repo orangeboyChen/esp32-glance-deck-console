@@ -46,6 +46,7 @@ describe('source-bound display publication', () => {
     expect(published).toHaveBeenCalledTimes(2)
     expect(published.mock.calls[0]?.[0]).toBe('desk-a')
     expect(published.mock.calls[0]?.[1]).toMatchObject({ id: 'release-1', version: 4, active_page_id: 'usage' })
+    expect(published.mock.calls[0]?.[1].pages.map((page: { page_id: string }) => page.page_id)).toEqual(['usage', 'system'])
   })
 
   test('does not republish an unchanged release already assigned to all devices', async () => {

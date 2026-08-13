@@ -27,6 +27,10 @@ type DeviceRelease = {
   pages: ReleasePageMetadata[]
 }
 
+function system_page_last(page_ids: string[]) {
+  return [...page_ids.filter((page_id) => page_id !== 'system'), ...page_ids.filter((page_id) => page_id === 'system')]
+}
+
 async function get_device_release(device_id: string): Promise<DeviceRelease | undefined> {
   if (!db) return undefined
   const [device] = await db.select({
@@ -66,8 +70,10 @@ export async function get_device_page_configuration(device_id: string): Promise<
   const device_release = await get_device_release(device_id)
   if (!device_release) return undefined
   const available_ids = new Set(device_release.pages.map((page) => page.page_id))
-  const enabled_page_ids = (device_release.enabled_page_ids?.length ? device_release.enabled_page_ids : device_release.pages.map((page) => page.page_id))
-    .filter((page_id) => available_ids.has(page_id))
+  const enabled_page_ids = system_page_last(
+    (device_release.enabled_page_ids?.length ? device_release.enabled_page_ids : device_release.pages.map((page) => page.page_id))
+      .filter((page_id) => available_ids.has(page_id)),
+  )
   if (!enabled_page_ids.length) return undefined
   const desired_page_id = enabled_page_ids.includes(device_release.desired_page_id ?? '')
     ? device_release.desired_page_id!
@@ -95,8 +101,9 @@ export async function set_device_page_configuration(device_id: string, enabled_p
   const page_by_id = new Map(device_release.pages.map((page) => [page.page_id, page]))
   if (enabled_page_ids.some((page_id) => !page_by_id.has(page_id))) throw new Error('device_page_not_in_release')
 
-  const pages = enabled_page_ids.map((page_id) => page_by_id.get(page_id)!)
-  await db.update(devices).set({ enabled_page_ids, desired_page_id }).where(eq(devices.id, device_id))
+  const ordered_page_ids = system_page_last(enabled_page_ids)
+  const pages = ordered_page_ids.map((page_id) => page_by_id.get(page_id)!)
+  await db.update(devices).set({ enabled_page_ids: ordered_page_ids, desired_page_id }).where(eq(devices.id, device_id))
   await publish_device_release(device_id, {
     id: device_release.release_id,
     version: device_release.release_version,
@@ -109,7 +116,7 @@ export async function set_device_page_configuration(device_id: string, enabled_p
     release_version: device_release.release_version,
     active_page_id: device_release.active_page_id,
     desired_page_id,
-    enabled_page_ids,
+    enabled_page_ids: ordered_page_ids,
     pages,
     available_pages: device_release.pages,
   } satisfies DevicePageConfiguration
