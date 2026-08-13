@@ -14,14 +14,18 @@ const foreground = 38
 const pages: Record<string, Display_document> = {
   usage: {
     title: 'Usage',
-    subtitle: 'Codex subscription',
+    subtitle: 'Codex',
     icon: 'usage',
     progresses: [
-      { label: 'Day', value: 79, max: 776, unit: 'USD' },
-      { label: 'Week', value: 618, max: 2054, unit: 'USD' },
-      { label: 'Month', value: 2068, max: 8216, unit: 'USD' },
+      { label: 'Day', value: 75.2, max: 388, unit: 'USD' },
+      { label: 'Week', value: 617.04, max: 1027, unit: 'USD' },
+      { label: 'Month', value: 1688.61, max: 4108, unit: 'USD' },
     ],
-    lines: [{ label: 'Resets', value: 'Tomorrow' }],
+    usage_details: [
+      { remaining: '$312.80', resets_at: '8/13 00:05' },
+      { remaining: '$409.96', resets_at: '8/13 02:07' },
+      { remaining: '$2419.39', resets_at: '8/26 13:00' },
+    ],
   },
   home: {
     title: 'Home',
@@ -57,9 +61,11 @@ function overlay_page_indicator(frame: Buffer, active_index: number, page_count:
     for (let y = circle_y_start(center_y); y <= center_y + 4; y += 1) {
       for (let x = circle_x - 4; x <= circle_x + 4; x += 1) {
         const distance = (x - circle_x) ** 2 + (y - center_y) ** 2
-        if (distance > 16 || (index !== active_index && distance < 9)) continue
         const offset = y * DISPLAY_WIDTH + x
-        overlay[offset >> 3] |= 0x80 >> (offset & 7)
+        if (distance <= 16) overlay[offset >> 3] &= ~(0x80 >> (offset & 7))
+        if (distance <= 16 && (index === active_index || distance >= 9)) {
+          overlay[offset >> 3] |= 0x80 >> (offset & 7)
+        }
       }
     }
   }

@@ -62,4 +62,29 @@ describe('fallback preview', () => {
     expect(rendered).toContain('y="156"')
     expect(rendered).toContain('y="190"')
   })
+
+  test('preserves the historical Usage details layout', () => {
+    const rendered = render_display_preview({
+      title: 'Usage',
+      subtitle: 'Codex',
+      icon: 'usage',
+      progresses: [
+        { label: 'Day', value: 75.2, max: 388, unit: 'USD' },
+        { label: 'Week', value: 617.04, max: 1027, unit: 'USD' },
+        { label: 'Month', value: 1688.61, max: 4108, unit: 'USD' },
+      ],
+      usage_details: [
+        { remaining: '$312.80', resets_at: '8/13 00:05' },
+        { remaining: '$409.96', resets_at: '8/13 02:07' },
+        { remaining: '$2419.39', resets_at: '8/26 13:00' },
+      ],
+    })
+    expect(rendered).toContain('x="66" y="44"')
+    expect(rendered).toContain('resets 8/13 00:05')
+    expect(rendered).toContain('$312.80 left')
+    expect(rendered).toContain('translate(346 16)')
+    expect(rendered).toContain('y="128"')
+    expect(rendered).toContain('y="108" width="61" height="4"')
+    expect(rendered).toContain('shape-rendering="crispEdges"')
+  })
 })

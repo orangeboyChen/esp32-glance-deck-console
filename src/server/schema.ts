@@ -130,6 +130,7 @@ export const display_bindings = pgTable('display_bindings', {
     icon?: 'usage' | 'battery' | 'wifi' | 'system' | 'home'
     progress?: { value: number | string; max: number | string; label?: string; unit?: string }
     progresses?: Array<{ value: number | string; max: number | string; label?: string; unit?: string }>
+    usage_details?: Array<{ remaining?: string; resets_at?: string }>
     lines?: Array<{ label: string; value: string }>
   }>().notNull(),
   device_ids: jsonb('device_ids').$type<string[]>().notNull(),

@@ -46,6 +46,10 @@ export function render_bound_document(template: Display_document, values: Source
       unit: template.progress.unit ? template_value(template.progress.unit, values) : undefined,
     } : inferred_progress,
     progresses,
+    usage_details: template.usage_details?.map((detail) => ({
+      remaining: detail.remaining ? template_value(detail.remaining, values) : undefined,
+      resets_at: detail.resets_at ? template_value(detail.resets_at, values) : undefined,
+    })),
     lines: template.lines?.map((line) => ({ label: template_value(line.label, values), value: template_value(line.value, values) })),
   }
 }
