@@ -1,11 +1,11 @@
 'use client'
 
 import { Alert, Block, Button, Empty, Flexbox, Input, Segmented, Tag, Text, TextArea, toast } from '@lobehub/ui'
-import { ArrowLeft, FileJson, Play, Plus, RefreshCw, Save } from 'lucide-react'
-import { useLocale, useTranslations } from 'next-intl'
+import { KeyRound, FileJson, Play, RefreshCw, Save } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { FormEvent, useEffect, useState } from 'react'
 
-import { usePathname, useRouter } from '@/i18n/navigation'
+import { ConsolePageHeader } from './console-page-header'
 
 type Source = { id: string; name: string; base_url: string; request_path: string; method: 'GET' | 'POST'; mapper: Record<string, string>; refresh_interval_seconds: number; status: string; last_success_at: string | null; last_error: string | null }
 type ImportPreview = { url: string; request_path: string; method: 'GET' | 'POST'; headers: Record<string, string>; body: unknown; refresh_interval_seconds: number | null; extractor_present: boolean; extractor_target_names: string[]; secret_variable_names: string[]; mapping_required: true }
@@ -14,13 +14,13 @@ const default_mapper = '{\n  "used": "$.used",\n  "total": "$.total",\n  "unit":
 
 export function SourcesManager() {
   const translate = useTranslations('Sources')
-  const locale = useLocale()
-  const pathname = usePathname()
-  const router = useRouter()
   const [sources, set_sources] = useState<Source[]>([])
   const [loading, set_loading] = useState(true)
   const [saving, set_saving] = useState(false)
   const [testing_id, set_testing_id] = useState<string | null>(null)
+  const [soruxgpt_token, set_soruxgpt_token] = useState('')
+  const [soruxgpt_connecting, set_soruxgpt_connecting] = useState(false)
+  const [soruxgpt_error, set_soruxgpt_error] = useState<string | null>(null)
   const [import_text, set_import_text] = useState('')
   const [preview, set_preview] = useState<ImportPreview | null>(null)
   const [importing, set_importing] = useState(false)
@@ -35,7 +35,6 @@ export function SourcesManager() {
   const [interval, set_interval] = useState('900')
   const [error, set_error] = useState<string | null>(null)
 
-  const change_locale = (next_locale: 'en' | 'zh-CN' | 'ja') => router.replace(pathname, { locale: next_locale })
   const load_sources = async () => {
     set_loading(true)
     try {
@@ -45,6 +44,23 @@ export function SourcesManager() {
     } catch { set_error(translate('loadFailed')) } finally { set_loading(false) }
   }
   useEffect(() => { void load_sources() }, [])
+
+  const connect_soruxgpt = async () => {
+    if (!soruxgpt_token.trim()) return
+    set_soruxgpt_connecting(true)
+    set_soruxgpt_error(null)
+    try {
+      const response = await fetch('/api/v1/sources/soruxgpt', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: soruxgpt_token.trim() }) })
+      const payload = await response.json() as { error?: string }
+      if (!response.ok) throw new Error(payload.error || 'soruxgptConnectFailed')
+      set_soruxgpt_token('')
+      toast.success(translate('soruxgptConnected'))
+      await load_sources()
+    } catch (connection_error) {
+      const code = connection_error instanceof Error ? connection_error.message : 'soruxgptConnectFailed'
+      set_soruxgpt_error(translate.has(code) ? translate(code) : translate('soruxgptConnectFailed'))
+    } finally { set_soruxgpt_connecting(false) }
+  }
 
   const import_export = async () => {
     set_error(null)
@@ -101,15 +117,19 @@ export function SourcesManager() {
   }
 
   return <main className="sources-shell">
-    <header className="dashboard-header">
-      <Flexbox className="dashboard-introduction" gap={10}>
-        <Button icon={ArrowLeft} onClick={() => router.push('/')} size="large">{translate('back')}</Button>
-        <Text className="eyebrow"><FileJson aria-hidden />{translate('eyebrow')}</Text>
-        <h1>{translate('title')}</h1>
-        <Text className="header-subtitle">{translate('subtitle')}</Text>
-      </Flexbox>
-      <Segmented aria-label={translate('language')} options={[{ label: 'EN', value: 'en' }, { label: '中文', value: 'zh-CN' }, { label: '日本語', value: 'ja' }]} value={locale} onChange={(value) => change_locale(value as 'en' | 'zh-CN' | 'ja')} />
-    </header>
+    <ConsolePageHeader back_label={translate('back')} eyebrow={translate('eyebrow')} icon={FileJson} language_label={translate('language')} subtitle={translate('subtitle')} title={translate('title')} />
+
+    <section className="sources-section" aria-labelledby="soruxgpt-heading">
+      <h2 id="soruxgpt-heading">{translate('soruxgptTitle')}</h2>
+      <Text type="secondary">{translate('soruxgptDescription')}</Text>
+      <Block className="source-form" variant="outlined">
+        <label htmlFor="soruxgpt-token">{translate('soruxgptToken')}</label>
+        <Input autoComplete="off" id="soruxgpt-token" placeholder={translate('soruxgptTokenPlaceholder')} type="password" value={soruxgpt_token} onChange={(event) => set_soruxgpt_token(event.target.value)} />
+        <Text type="secondary">{translate('soruxgptSecurity')}</Text>
+        {soruxgpt_error && <Text className="enrollment-error" role="alert" type="danger">{soruxgpt_error}</Text>}
+        <Button disabled={!soruxgpt_token.trim()} icon={KeyRound} loading={soruxgpt_connecting} onClick={() => void connect_soruxgpt()} size="large" type="primary">{translate('connectSoruxgpt')}</Button>
+      </Block>
+    </section>
 
     <section className="sources-section" aria-labelledby="sources-heading">
       <Flexbox horizontal align="center" justify="space-between" wrap="wrap" gap={12}><h2 id="sources-heading">{translate('savedSources')}</h2><Button icon={RefreshCw} onClick={() => void load_sources()}>{translate('refresh')}</Button></Flexbox>
@@ -124,17 +144,17 @@ export function SourcesManager() {
     </section>
 
     <section className="sources-section" aria-labelledby="new-source-heading"><h2 id="new-source-heading">{translate('newSource')}</h2><Text type="secondary">{translate('newSourceDescription')}</Text>
-      <form className="source-form" onSubmit={save_source}>
-        <label htmlFor="source-name">{translate('name')}</label><Input id="source-name" required value={name} onChange={(event) => set_name(event.target.value)} />
-        <label htmlFor="source-url">{translate('baseUrl')}</label><Input id="source-url" required type="url" value={base_url} onChange={(event) => set_base_url(event.target.value)} />
-        <label htmlFor="source-path">{translate('requestPath')}</label><Input id="source-path" required value={request_path} onChange={(event) => set_request_path(event.target.value)} />
-        <label>{translate('method')}</label><Segmented options={[{ label: 'GET', value: 'GET' }, { label: 'POST', value: 'POST' }]} value={method} onChange={(value) => set_method(value as 'GET' | 'POST')} />
-        <label htmlFor="source-headers">{translate('headers')}</label><TextArea id="source-headers" rows={4} value={headers} onChange={(event) => set_headers(event.target.value)} />
-        <label htmlFor="source-body">{translate('body')}</label><TextArea id="source-body" rows={4} value={body_template} onChange={(event) => set_body_template(event.target.value)} />
-        <label htmlFor="source-secrets">{translate('secrets')}</label><TextArea id="source-secrets" rows={4} value={secrets} onChange={(event) => set_secrets(event.target.value)} />
-        <label htmlFor="source-mapper">{translate('mapper')}</label><TextArea id="source-mapper" required rows={6} value={mapper} onChange={(event) => set_mapper(event.target.value)} />
-        <label htmlFor="source-interval">{translate('interval')}</label><Input id="source-interval" min={60} max={86400} required type="number" value={interval} onChange={(event) => set_interval(event.target.value)} />
-        {error && <Text className="enrollment-error" role="alert" type="danger">{error}</Text>}<Button htmlType="submit" icon={Save} loading={saving} size="large" type="primary">{translate('save')}</Button>
+      <form className="source-form source-form-grid" onSubmit={save_source}>
+        <div className="form-field"><label htmlFor="source-name">{translate('name')}</label><Input id="source-name" required value={name} onChange={(event) => set_name(event.target.value)} /></div>
+        <div className="form-field"><label htmlFor="source-url">{translate('baseUrl')}</label><Input id="source-url" required type="url" value={base_url} onChange={(event) => set_base_url(event.target.value)} /></div>
+        <div className="form-field form-field-wide"><label htmlFor="source-path">{translate('requestPath')}</label><Input id="source-path" required value={request_path} onChange={(event) => set_request_path(event.target.value)} /></div>
+        <div className="form-field"><label>{translate('method')}</label><Segmented options={[{ label: 'GET', value: 'GET' }, { label: 'POST', value: 'POST' }]} value={method} onChange={(value) => set_method(value as 'GET' | 'POST')} /></div>
+        <div className="form-field"><label htmlFor="source-interval">{translate('interval')}</label><Input id="source-interval" min={60} max={86400} required type="number" value={interval} onChange={(event) => set_interval(event.target.value)} /></div>
+        <div className="form-field form-field-wide"><label htmlFor="source-headers">{translate('headers')}</label><TextArea id="source-headers" rows={4} value={headers} onChange={(event) => set_headers(event.target.value)} /></div>
+        <div className="form-field form-field-wide"><label htmlFor="source-body">{translate('body')}</label><TextArea id="source-body" rows={4} value={body_template} onChange={(event) => set_body_template(event.target.value)} /></div>
+        <div className="form-field form-field-wide"><label htmlFor="source-secrets">{translate('secrets')}</label><TextArea id="source-secrets" rows={4} value={secrets} onChange={(event) => set_secrets(event.target.value)} /></div>
+        <div className="form-field form-field-wide"><label htmlFor="source-mapper">{translate('mapper')}</label><TextArea id="source-mapper" required rows={6} value={mapper} onChange={(event) => set_mapper(event.target.value)} /></div>
+        {error && <Text className="enrollment-error form-action" role="alert" type="danger">{error}</Text>}<Button className="form-action" htmlType="submit" icon={Save} loading={saving} size="large" type="primary">{translate('save')}</Button>
       </form>
     </section>
   </main>

@@ -1,12 +1,12 @@
 'use client'
 
-import { Alert, Block, Button, Flexbox, Input, Modal, Segmented, Tag, Text, toast } from '@lobehub/ui'
-import { ArrowLeft, KeyRound, Plus, ShieldCheck, Trash2 } from 'lucide-react'
+import { Alert, Block, Button, Flexbox, Input, Modal, Tag, Text, toast } from '@lobehub/ui'
+import { KeyRound, Plus, ShieldCheck, Trash2 } from 'lucide-react'
 import { atom, useAtom } from 'jotai'
 import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 
-import { usePathname, useRouter } from '@/i18n/navigation'
+import { ConsolePageHeader } from './console-page-header'
 
 type ApiToken = { id: string; label: string; scopes: string[]; created_at: string }
 type Passkey = { id: string; created_at: string; transports: string[] | null }
@@ -47,8 +47,6 @@ function serialise_credential(credential: Credential) {
 export function SettingsManager() {
   const translate = useTranslations('Settings')
   const locale = useLocale()
-  const pathname = usePathname()
-  const router = useRouter()
   const [label, set_label] = useAtom(token_label_atom)
   const [scopes, set_scopes] = useAtom(token_scopes_atom)
   const [tokens, set_tokens] = useState<ApiToken[]>([])
@@ -59,7 +57,6 @@ export function SettingsManager() {
   const [remove_passkey, set_remove_passkey] = useState<Passkey | null>(null)
   const [passkey_busy, set_passkey_busy] = useState(false)
   const [error, set_error] = useState<string | null>(null)
-  const change_locale = (next_locale: 'en' | 'zh-CN' | 'ja') => router.replace(pathname, { locale: next_locale })
   const load = async () => {
     set_loading(true); set_error(null)
     try {
@@ -116,7 +113,7 @@ export function SettingsManager() {
   }
   const available_scopes = ['devices:read', 'devices:command', 'alerts:read', 'ota:install']
   return <main className="sources-shell settings-shell">
-    <header className="dashboard-header"><Flexbox className="dashboard-introduction" gap={10}><Button icon={ArrowLeft} onClick={() => router.push('/')} size="large">{translate('back')}</Button><Text className="eyebrow"><ShieldCheck aria-hidden />{translate('eyebrow')}</Text><h1>{translate('title')}</h1><Text className="header-subtitle">{translate('subtitle')}</Text></Flexbox><Segmented aria-label={translate('language')} options={[{ label: 'EN', value: 'en' }, { label: '中文', value: 'zh-CN' }, { label: '日本語', value: 'ja' }]} value={locale} onChange={(value) => change_locale(value as 'en' | 'zh-CN' | 'ja')} /></header>
+    <ConsolePageHeader back_label={translate('back')} eyebrow={translate('eyebrow')} icon={ShieldCheck} language_label={translate('language')} subtitle={translate('subtitle')} title={translate('title')} />
     {error && <Alert className="settings-alert" message={error} showIcon type="error" />}
     {loading ? <Text>{translate('loading')}</Text> : (
       <Flexbox className="settings-sections" gap={28}>
@@ -130,8 +127,8 @@ export function SettingsManager() {
               <Flexbox className="scope-list" gap={8}>{available_scopes.map((scope) => <label className="scope-option" key={scope}><input checked={scopes.includes(scope)} type="checkbox" onChange={(event) => set_scopes((current) => event.target.checked ? [...current, scope] : current.filter((item) => item !== scope))} />{translate(`scope_${scope.replace(':', '_')}`)}</label>)}</Flexbox>
               <Button disabled={!label.trim() || scopes.length === 0} loading={saving} icon={Plus} onClick={() => void create_token()} size="large" type="primary">{translate('createToken')}</Button>
             </Flexbox>
+            <Flexbox className="token-list" gap={10}>{tokens.length === 0 ? <Text type="secondary">{translate('noTokens')}</Text> : tokens.map((token) => <Block className="token-row" key={token.id} variant="outlined"><Flexbox gap={5}><Flexbox horizontal align="center" justify="space-between" gap={12}><Text strong>{token.label}</Text><Button aria-label={translate('revokeToken')} icon={Trash2} onClick={() => void revoke_token(token)} size="large" type="text" /></Flexbox><Text type="secondary">{token.scopes.map((scope) => translate(`scope_${scope.replace(':', '_')}`)).join(' · ')}</Text><Text type="secondary">{translate('created', { date: new Date(token.created_at).toLocaleString(locale) })}</Text></Flexbox></Block>)}</Flexbox>
           </Block>
-          <Flexbox className="token-list" gap={10}>{tokens.length === 0 ? <Text type="secondary">{translate('noTokens')}</Text> : tokens.map((token) => <Block className="token-row" key={token.id} variant="outlined"><Flexbox gap={5}><Flexbox horizontal align="center" justify="space-between" gap={12}><Text strong>{token.label}</Text><Button aria-label={translate('revokeToken')} icon={Trash2} onClick={() => void revoke_token(token)} size="large" type="text" /></Flexbox><Text type="secondary">{token.scopes.map((scope) => translate(`scope_${scope.replace(':', '_')}`)).join(' · ')}</Text><Text type="secondary">{translate('created', { date: new Date(token.created_at).toLocaleString(locale) })}</Text></Flexbox></Block>)}</Flexbox>
         </section>
         <section aria-labelledby="passkey-heading">
           <Flexbox gap={4}><h2 id="passkey-heading">{translate('passkeysTitle')}</h2><Text type="secondary">{translate('passkeysDescription')}</Text></Flexbox>

@@ -1,14 +1,13 @@
 'use client'
 
 import { Alert, Block, Button, Checkbox, Empty, Flexbox, Segmented, Tag, Text, Tooltip, toast } from '@lobehub/ui'
-import { ArrowDown, ArrowUp, BatteryMedium, Bell, ChartNoAxesCombined, CircleAlert, ChevronRight, Cpu, Database, Gauge, Monitor, PanelsTopLeft, Plus, Radio, RefreshCw, Settings, Wifi } from 'lucide-react'
+import { ArrowDown, ArrowUp, BatteryMedium, ChartNoAxesCombined, CircleAlert, ChevronRight, Gauge, Monitor, Plus, Radio, RefreshCw, Wifi } from 'lucide-react'
 import { useAtom, useSetAtom } from 'jotai'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 
 import { DevicePreview } from './device-preview'
 import { EnrollmentDialog } from './enrollment-dialog'
-import { usePathname, useRouter } from '@/i18n/navigation'
 import {
   begin_device_command_atom,
   command_feedback_atom,
@@ -67,9 +66,6 @@ export function DeviceDashboard({ devices, summary }: DeviceDashboardProps) {
   const [selected_device_id, set_selected_device_id] = useAtom(selected_device_id_atom)
   const [selected_preview_id, set_selected_preview_id] = useAtom(selected_preview_id_atom)
   const [command_feedback, set_command_feedback] = useAtom(command_feedback_atom)
-  const locale = useLocale()
-  const pathname = usePathname()
-  const router = useRouter()
   const translate = useTranslations('Dashboard')
   const begin_command = useSetAtom(begin_device_command_atom)
   const resolve_command = useSetAtom(resolve_device_command_atom)
@@ -79,7 +75,6 @@ export function DeviceDashboard({ devices, summary }: DeviceDashboardProps) {
   const [enrollment_open, set_enrollment_open] = useState(false)
   const [device_filter, set_device_filter] = useState<'all' | 'attention'>('all')
   const [preview_svg_by_device, set_preview_svg_by_device] = useState<Record<string, string>>({})
-  const change_locale = (next_locale: 'en' | 'zh-CN' | 'ja') => router.replace(pathname, { locale: next_locale })
   const visible_devices = device_filter === 'all'
     ? devices
     : devices.filter((device) => device.status !== 'online' || device.ota_status !== null || device.active_page_id === 'alerts')
@@ -167,16 +162,8 @@ export function DeviceDashboard({ devices, summary }: DeviceDashboardProps) {
           <h1>{translate('title')}</h1>
           <Text className="header-subtitle">{translate('subtitle')}</Text>
         </Flexbox>
-        <Flexbox className="header-actions" horizontal gap={12} wrap="wrap">
-          <Segmented aria-label={translate('language')} options={[{ label: 'EN', value: 'en' }, { label: '中文', value: 'zh-CN' }, { label: '日本語', value: 'ja' }]} onChange={(value) => change_locale(value as 'en' | 'zh-CN' | 'ja')} value={locale} />
-          <Button icon={Database} onClick={() => router.push('/sources')} size="large">{translate('sources')}</Button>
-          <Button icon={Cpu} onClick={() => router.push('/firmware')} size="large">{translate('firmware')}</Button>
-          <Button icon={PanelsTopLeft} onClick={() => router.push('/displays')} size="large">{translate('displays')}</Button>
-          <Button icon={Bell} onClick={() => router.push('/alerts')} size="large">{translate('alerts')}</Button>
-          <Button icon={Settings} onClick={() => router.push('/settings')} size="large">{translate('settings')}</Button>
-          <Button aria-label={translate('addDevice')} icon={Plus} onClick={() => set_enrollment_open(true)} size="large" type="primary">
-            {translate('addDevice')}
-          </Button>
+        <Flexbox className="header-actions" gap={14}>
+          <Button aria-label={translate('addDevice')} icon={Plus} onClick={() => set_enrollment_open(true)} size="large" type="primary">{translate('addDevice')}</Button>
         </Flexbox>
       </header>
 

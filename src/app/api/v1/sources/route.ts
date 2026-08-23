@@ -11,7 +11,7 @@ const source_schema = z.object({
   name: z.string().min(1).max(128), base_url: z.url(), request_path: z.string().min(1),
   method: z.enum(['GET', 'POST']).default('GET'), headers: z.record(z.string(), z.string()).default({}),
   body_template: z.string().max(8192).optional(), secrets: z.record(z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/), z.string()).default({}),
-  mapper: z.record(z.string(), z.string().max(256)).refine((mapper) => Object.keys(mapper).every((key) => ['plan_name', 'used', 'remaining', 'total', 'unit', 'resets_at', 'status'].includes(key))),
+  mapper: z.record(z.string(), z.string().max(256)).refine((mapper) => Object.keys(mapper).every((key) => ['plan_name', 'used', 'remaining', 'total', 'unit', 'resets_at', 'status', 'provider'].includes(key))),
   refresh_interval_seconds: z.number().int().min(60).max(86_400).default(900),
 })
 

@@ -12,14 +12,20 @@ Accept: application/json
 Authorization: Bearer <source-secret>
 ```
 
-An unauthenticated probe returns `401` with `{"error":"authorization header
-required"}`. The live bearer value from a chat request must not be committed,
-logged, or replayed. Capture only a redacted response sample when configuring
-the source mapper.
+Connect it in **Sources → SoruxGPT Codex quota**. The control plane encrypts
+the bearer token, refreshes it every 15 minutes, and never sends it to a device
+or Home Assistant.
 
 ## Normalized values
 
-Map the response to the following fields in the source editor:
+The `/api/v1/codex` response has a `usage_limits` array with `current_usage`,
+`limit_value`, `limit_type`, `time_unit`, `time_value`, and reset timestamps.
+The dedicated adapter aggregates every active `usage_limits` window: it sums
+`current_usage`, `limit_value`, and the remaining amount. The earliest reset
+timestamp is retained for display. For `usd` limits, the API's micro-USD
+integers are converted to USD before display.
+
+It persists the following normalized fields:
 
 | Field | Meaning | Display use |
 | --- | --- | --- |

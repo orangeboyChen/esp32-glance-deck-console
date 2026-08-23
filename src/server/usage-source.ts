@@ -2,7 +2,7 @@ import { isIP } from 'node:net'
 import { lookup } from 'node:dns/promises'
 import { request as https_request } from 'node:https'
 
-import { and, desc, eq, gte } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, lt, or } from 'drizzle-orm'
 
 import { db } from './db'
 import { decrypt_secret } from './secrets'
@@ -14,6 +14,78 @@ import { derive_usage_metrics } from './usage-stats'
 const MAX_RESPONSE_BYTES = 256 * 1024
 const fields = ['plan_name', 'used', 'remaining', 'total', 'unit', 'resets_at', 'status'] as const
 type MappedValue = string | number | null
+
+type SoruxUsageLimit = {
+  current_usage: unknown
+  expires_at: unknown
+  limit_type: unknown
+  limit_value: unknown
+  next_available_at?: unknown
+  product_name?: unknown
+  time_unit?: unknown
+  time_value?: unknown
+}
+
+type NormalizedSoruxUsageLimit = SoruxUsageLimit & { current: number; limit: number }
+
+function record(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
+}
+
+function number_value(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function string_value(value: unknown) {
+  return typeof value === 'string' && value.length > 0 ? value : null
+}
+
+function format_usage_value(value: number, divisor: number) {
+  return Math.round((value / divisor) * 1000) / 1000
+}
+
+export function normalize_soruxgpt_codex(value: unknown, now = new Date()): Record<string, MappedValue> {
+  const response = record(value)
+  const limits: NormalizedSoruxUsageLimit[] = []
+  if (Array.isArray(response?.usage_limits)) {
+    for (const raw_limit of response.usage_limits) {
+      const limit = record(raw_limit) as SoruxUsageLimit | null
+      const current = number_value(limit?.current_usage)
+      const maximum = number_value(limit?.limit_value)
+      if (limit && current !== null && maximum !== null && current >= 0 && maximum > 0) limits.push({ ...limit, current, limit: maximum })
+    }
+  }
+  const active_limits = limits.filter((item) => {
+    const expires_at = string_value(item.expires_at)
+    if (!expires_at) return true
+    const expires_at_ms = Date.parse(expires_at)
+    return Number.isFinite(expires_at_ms) && expires_at_ms > now.getTime()
+  })
+  if (!active_limits.length) throw new Error('soruxgpt_usage_limits_missing')
+
+  const limit_types = new Set(active_limits.map((item) => string_value(item.limit_type)?.toLowerCase() ?? 'units'))
+  if (limit_types.size !== 1) throw new Error('soruxgpt_usage_limits_mixed_units')
+  const used = active_limits.reduce((total, item) => total + item.current, 0)
+  const total = active_limits.reduce((sum, item) => sum + item.limit, 0)
+  const limit_type = [...limit_types][0] ?? 'units'
+  const currency = limit_type === 'usd'
+  const divisor = currency ? 1_000_000 : 1
+  const unit = currency ? 'USD' : (limit_type?.toUpperCase() ?? 'units')
+  const resets_at = active_limits
+    .map((item) => string_value(item.next_available_at) ?? string_value(item.expires_at))
+    .map((value) => ({ value, timestamp: value ? Date.parse(value) : Number.NaN }))
+    .filter((item): item is { value: string; timestamp: number } => item.value !== null && Number.isFinite(item.timestamp))
+    .sort((left, right) => left.timestamp - right.timestamp)[0]?.value ?? null
+  return {
+    plan_name: string_value(response?.display_name) ? `SoruxGPT ${response?.display_name}` : 'SoruxGPT Codex',
+    used: format_usage_value(used, divisor),
+    remaining: format_usage_value(Math.max(0, total - used), divisor),
+    total: format_usage_value(total, divisor),
+    unit,
+    resets_at,
+    status: `${active_limits.length} active quota windows`,
+  }
+}
 
 function json_path(value: unknown, selector: string): MappedValue {
   const parts = /^\$((?:\.[A-Za-z_][A-Za-z0-9_]*)|(?:\[\d+\]))*$/.exec(selector)
@@ -41,9 +113,11 @@ function redact_response(value: string, secrets: Record<string, string>) {
 function is_private_address(address: string) {
   if (isIP(address) === 4) {
     const [first, second] = address.split('.').map(Number)
-    return first === 10 || first === 127 || first === 0 || first === 169 && second === 254 || first === 172 && second >= 16 && second <= 31 || first === 192 && second === 168
+    return first === 0 || first === 10 || first === 127 || first === 169 && second === 254 || first === 172 && second >= 16 && second <= 31 || first === 192 && second === 168 || first === 192 && second === 0 || first === 198 && (second === 18 || second === 19) || first === 100 && second >= 64 && second <= 127
   }
-  return address === '::1' || address.startsWith('fc') || address.startsWith('fd') || address.startsWith('fe80:')
+  const normalized = address.toLowerCase()
+  const first_group = Number.parseInt(normalized.split(':')[0] ?? '', 16)
+  return normalized === '::' || normalized === '::1' || normalized.startsWith('::ffff:') || normalized.startsWith('fc') || normalized.startsWith('fd') || (first_group >= 0xfe80 && first_group <= 0xfebf) || (first_group >= 0xff00 && first_group <= 0xffff) || normalized.startsWith('2001:db8:')
 }
 
 type SafeSourceUrl = {
@@ -108,8 +182,14 @@ async function fetch_source(source_url: SafeSourceUrl, method: string, headers: 
   })
 }
 
-export async function refresh_usage_source(source_id: string) {
+export async function refresh_usage_source(source_id: string, already_claimed = false) {
   if (!db) throw new Error('database_unavailable')
+  if (!already_claimed) {
+    const stale_claim_before = new Date(Date.now() - 30 * 60 * 1000)
+    const [claimed] = await db.update(usage_sources).set({ status: 'refreshing', last_attempt_at: new Date() })
+      .where(and(eq(usage_sources.id, source_id), or(inArray(usage_sources.status, ['active', 'error']), and(eq(usage_sources.status, 'refreshing'), lt(usage_sources.last_attempt_at, stale_claim_before))))).returning({ id: usage_sources.id })
+    if (!claimed) throw new Error('source_refresh_in_progress')
+  }
   const [source] = await db.select().from(usage_sources).where(eq(usage_sources.id, source_id)).limit(1)
   if (!source) throw new Error('source_not_found')
   try {
@@ -122,7 +202,9 @@ export async function refresh_usage_source(source_id: string) {
     if (!response.content_type.includes('json')) throw new Error('source_content_type_invalid')
     const raw = response.raw
     const parsed: unknown = JSON.parse(raw)
-    const values = Object.fromEntries(fields.map((field) => [field, source.mapper[field] ? json_path(parsed, source.mapper[field]) : null])) as Record<string, MappedValue>
+    const values = source.mapper.provider === 'soruxgpt_codex'
+      ? normalize_soruxgpt_codex(parsed)
+      : Object.fromEntries(fields.map((field) => [field, source.mapper[field] ? json_path(parsed, source.mapper[field]) : null])) as Record<string, MappedValue>
     const previous = await db.select({ values: source_snapshots.values }).from(source_snapshots)
       .where(eq(source_snapshots.source_id, source_id)).orderBy(desc(source_snapshots.fetched_at)).limit(1)
     const history_start = new Date()

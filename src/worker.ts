@@ -1,5 +1,5 @@
 import { dispatch_queued_commands } from './server/commands'
-import { eq } from 'drizzle-orm'
+import { inArray, or, and, eq, lt } from 'drizzle-orm'
 import { db } from './server/db'
 import { start_device_state_consumer } from './server/mqtt'
 import { dispatch_queued_ota_jobs } from './server/ota'
@@ -18,9 +18,10 @@ async function tick() {
     console.error(`${worker_name}: command dispatch failed`, error)
   }
   if (!db) return
-  const sources = await db.select().from(usage_sources).where(eq(usage_sources.status, 'active'))
   const now = Date.now()
-  await Promise.all(sources.filter((source) => !source.last_success_at || now - source.last_success_at.getTime() >= source.refresh_interval_seconds * 1000)
+  const stale_claim_before = new Date(now - 30 * 60 * 1000)
+  const sources = await db.select().from(usage_sources).where(or(inArray(usage_sources.status, ['active', 'error']), and(eq(usage_sources.status, 'refreshing'), lt(usage_sources.last_attempt_at, stale_claim_before))))
+  await Promise.all(sources.filter((source) => !source.last_attempt_at || now - source.last_attempt_at.getTime() >= source.refresh_interval_seconds * 1000)
     .map(async (source) => {
       try { await refresh_usage_source(source.id) } catch (error) { console.error(`${worker_name}: source refresh failed`, error) }
     }))

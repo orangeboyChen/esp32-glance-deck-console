@@ -3,6 +3,7 @@ import { NextIntlClientProvider, hasLocale } from 'next-intl'
 import { notFound } from 'next/navigation'
 
 import '../styles.css'
+import { ConsoleShell } from '@/components/console-shell'
 import { Providers } from '../providers'
 import { routing } from '@/i18n/routing'
 
@@ -19,7 +20,7 @@ export default async function locale_layout({ children, params }: Readonly<{ chi
     <html lang={locale}>
       <body>
         <NextIntlClientProvider>
-          <Providers>{children}</Providers>
+          <Providers><ConsoleShell>{children}</ConsoleShell></Providers>
         </NextIntlClientProvider>
       </body>
     </html>

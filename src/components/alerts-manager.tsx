@@ -1,11 +1,11 @@
 'use client'
 
 import { Alert, Block, Button, Checkbox, Empty, Flexbox, Input, Segmented, Tag, Text, toast } from '@lobehub/ui'
-import { ArrowLeft, Bell, RefreshCw, Save, Trash2 } from 'lucide-react'
-import { useLocale, useTranslations } from 'next-intl'
+import { Bell, RefreshCw, Save, Trash2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { FormEvent, useEffect, useState } from 'react'
 
-import { usePathname, useRouter } from '@/i18n/navigation'
+import { ConsolePageHeader } from './console-page-header'
 
 type Source = { id: string; name: string }
 type Device = { id: string; name: string; active_page_id: string }
@@ -16,9 +16,6 @@ const fields = ['plan_name', 'used', 'remaining', 'total', 'unit', 'resets_at', 
 
 export function AlertsManager() {
   const translate = useTranslations('Alerts')
-  const locale = useLocale()
-  const pathname = usePathname()
-  const router = useRouter()
   const [sources, set_sources] = useState<Source[]>([])
   const [devices, set_devices] = useState<Device[]>([])
   const [alerts, set_alerts] = useState<AlertRule[]>([])
@@ -36,7 +33,6 @@ export function AlertsManager() {
   const [message, set_message] = useState('')
   const [test_only, set_test_only] = useState(false)
 
-  const change_locale = (next_locale: 'en' | 'zh-CN' | 'ja') => router.replace(pathname, { locale: next_locale })
   const load = async () => {
     set_loading(true)
     try {
@@ -77,14 +73,7 @@ export function AlertsManager() {
   }
 
   return <main className="sources-shell alerts-shell">
-    <header className="dashboard-header">
-      <Flexbox className="dashboard-introduction" gap={10}>
-        <Button icon={ArrowLeft} onClick={() => router.push('/')} size="large">{translate('back')}</Button>
-        <Text className="eyebrow"><Bell aria-hidden />{translate('eyebrow')}</Text>
-        <h1>{translate('title')}</h1><Text className="header-subtitle">{translate('subtitle')}</Text>
-      </Flexbox>
-      <Segmented aria-label={translate('language')} options={[{ label: 'EN', value: 'en' }, { label: '中文', value: 'zh-CN' }, { label: '日本語', value: 'ja' }]} value={locale} onChange={(value) => change_locale(value as 'en' | 'zh-CN' | 'ja')} />
-    </header>
+    <ConsolePageHeader back_label={translate('back')} eyebrow={translate('eyebrow')} icon={Bell} language_label={translate('language')} subtitle={translate('subtitle')} title={translate('title')} />
 
     <section className="sources-section" aria-labelledby="alerts-heading">
       <Flexbox horizontal align="center" justify="space-between" wrap="wrap" gap={12}><h2 id="alerts-heading">{translate('saved')}</h2><Button icon={RefreshCw} onClick={() => void load()}>{translate('refresh')}</Button></Flexbox>
@@ -92,19 +81,18 @@ export function AlertsManager() {
     </section>
 
     <section className="sources-section" aria-labelledby="new-alert-heading"><h2 id="new-alert-heading">{translate('new')}</h2><Text type="secondary">{translate('newDescription')}</Text>
-      <form className="source-form" onSubmit={save}>
-        <label htmlFor="alert-name">{translate('name')}</label><Input id="alert-name" required value={name} onChange={(event) => set_name(event.target.value)} />
-        <label htmlFor="alert-source">{translate('source')}</label><select id="alert-source" required value={source_id} onChange={(event) => set_source_id(event.target.value)}><option value="">{translate('chooseSource')}</option>{sources.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}</select>
-        <label htmlFor="alert-field">{translate('field')}</label><select id="alert-field" value={field} onChange={(event) => set_field(event.target.value as (typeof fields)[number])}>{fields.map((item) => <option key={item} value={item}>{translate(`field_${item}`)}</option>)}</select>
-        <label>{translate('condition')}</label><Segmented options={(['gt', 'gte', 'lt', 'lte', 'eq', 'neq', 'contains'] as Operator[]).map((item) => ({ label: translate(`operator_${item}`), value: item }))} value={operator} onChange={(value) => set_operator(value as Operator)} />
-        <label htmlFor="alert-threshold">{translate('threshold')}</label><Input id="alert-threshold" required value={threshold} onChange={(event) => set_threshold(event.target.value)} />
-        <fieldset className="alert-targets"><legend>{translate('devices')}</legend>{devices.length === 0 ? <Text type="secondary">{translate('noDevices')}</Text> : devices.map((device) => <Checkbox checked={device_ids.includes(device.id)} key={device.id} onChange={(checked) => toggle_device(device.id, checked)}>{device.name}</Checkbox>)}</fieldset>
-        <label htmlFor="alert-severity">{translate('severity')}</label><Segmented options={['info', 'warning', 'critical'].map((item) => ({ label: translate(`severity_${item}`), value: item }))} value={severity} onChange={(value) => set_severity(String(value))} />
-        <label htmlFor="alert-message">{translate('message')}</label><Input id="alert-message" value={message} onChange={(event) => set_message(event.target.value)} />
-        <label htmlFor="alert-page">{translate('page')}</label><Input id="alert-page" required value={page_ids} onChange={(event) => set_page_ids(event.target.value)} /><Text type="secondary">{translate('pageHelp')}</Text>
-        <Checkbox checked={test_only} onChange={set_test_only}>{translate('testOnly')}</Checkbox>
-        {test_only && <Alert showIcon type="warning" message={translate('testWarning')} />}
-        {error && <Text role="alert" type="danger">{error}</Text>}<Button htmlType="submit" icon={Save} loading={saving} size="large" type="primary">{translate('create')}</Button>
+      <form className="source-form alert-form-grid" onSubmit={save}>
+        <div className="form-field"><label htmlFor="alert-name">{translate('name')}</label><Input id="alert-name" required value={name} onChange={(event) => set_name(event.target.value)} /></div>
+        <div className="form-field"><label htmlFor="alert-source">{translate('source')}</label><select id="alert-source" required value={source_id} onChange={(event) => set_source_id(event.target.value)}><option value="">{translate('chooseSource')}</option>{sources.map((source) => <option key={source.id} value={source.id}>{source.name}</option>)}</select></div>
+        <div className="form-field"><label htmlFor="alert-field">{translate('field')}</label><select id="alert-field" value={field} onChange={(event) => set_field(event.target.value as (typeof fields)[number])}>{fields.map((item) => <option key={item} value={item}>{translate(`field_${item}`)}</option>)}</select></div>
+        <div className="form-field form-field-wide"><label>{translate('condition')}</label><Segmented options={(['gt', 'gte', 'lt', 'lte', 'eq', 'neq', 'contains'] as Operator[]).map((item) => ({ label: translate(`operator_${item}`), value: item }))} value={operator} onChange={(value) => set_operator(value as Operator)} /></div>
+        <div className="form-field"><label htmlFor="alert-threshold">{translate('threshold')}</label><Input id="alert-threshold" required value={threshold} onChange={(event) => set_threshold(event.target.value)} /></div>
+        <fieldset className="alert-targets form-field-wide"><legend>{translate('devices')}</legend>{devices.length === 0 ? <Text type="secondary">{translate('noDevices')}</Text> : devices.map((device) => <Checkbox checked={device_ids.includes(device.id)} key={device.id} onChange={(checked) => toggle_device(device.id, checked)}>{device.name}</Checkbox>)}</fieldset>
+        <div className="form-field"><label htmlFor="alert-severity">{translate('severity')}</label><Segmented options={['info', 'warning', 'critical'].map((item) => ({ label: translate(`severity_${item}`), value: item }))} value={severity} onChange={(value) => set_severity(String(value))} /></div>
+        <div className="form-field"><label htmlFor="alert-message">{translate('message')}</label><Input id="alert-message" value={message} onChange={(event) => set_message(event.target.value)} /></div>
+        <div className="form-field"><label htmlFor="alert-page">{translate('page')}</label><Input id="alert-page" required value={page_ids} onChange={(event) => set_page_ids(event.target.value)} /><Text type="secondary">{translate('pageHelp')}</Text></div>
+        <div className="form-field form-field-wide"><Checkbox checked={test_only} onChange={set_test_only}>{translate('testOnly')}</Checkbox>{test_only && <Alert showIcon type="warning" message={translate('testWarning')} />}</div>
+        {error && <Text className="form-action" role="alert" type="danger">{error}</Text>}<Button className="form-action" htmlType="submit" icon={Save} loading={saving} size="large" type="primary">{translate('create')}</Button>
       </form>
     </section>
   </main>

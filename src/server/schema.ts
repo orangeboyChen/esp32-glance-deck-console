@@ -6,7 +6,7 @@ const bytea = customType<{ data: Buffer; driverData: Buffer }>({
 
 export const device_status = pgEnum('device_status', ['enrolling', 'online', 'offline', 'error'])
 export const command_status = pgEnum('command_status', ['queued', 'sent', 'confirmed', 'failed'])
-export const source_status = pgEnum('source_status', ['active', 'paused', 'error'])
+export const source_status = pgEnum('source_status', ['active', 'paused', 'error', 'refreshing'])
 export const ota_job_status = pgEnum('ota_job_status', ['awaiting_confirmation', 'queued', 'sent', 'downloading', 'verifying', 'rebooting', 'healthy', 'rolled_back', 'failed', 'cancelled'])
 export const alert_operator = pgEnum('alert_operator', ['gt', 'gte', 'lt', 'lte', 'eq', 'neq', 'contains'])
 
@@ -87,6 +87,7 @@ export const usage_sources = pgTable('usage_sources', {
   mapper: jsonb('mapper').$type<Record<string, string>>().notNull(),
   refresh_interval_seconds: integer('refresh_interval_seconds').default(900).notNull(),
   status: source_status('source_status').default('active').notNull(),
+  last_attempt_at: timestamp('last_attempt_at', { withTimezone: true }),
   last_success_at: timestamp('last_success_at', { withTimezone: true }),
   last_error: text('last_error'),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
