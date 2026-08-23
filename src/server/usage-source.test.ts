@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { normalize_soruxgpt_codex } from './usage-source'
+import { normalize_soruxgpt_codex } from './soruxgpt'
 
 describe('SoruxGPT Codex usage normalization', () => {
   test('aggregates active quota windows and converts USD micro-units', () => {
