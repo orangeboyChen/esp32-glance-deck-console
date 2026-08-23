@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "tsc --noEmit --project tsconfig.lint.json",
     "test": "bun test",
     "render:display-doc-images": "bun scripts/render-display-doc-images.ts",
     "test:coverage": "bun test --max-concurrency 1 --isolate --coverage --coverage-reporter=lcov && bun scripts/check-coverage.ts coverage/lcov.info 90",

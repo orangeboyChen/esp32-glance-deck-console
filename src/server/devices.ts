@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte } from 'drizzle-orm'
+import { and, count, desc, eq, gte, inArray, sql } from 'drizzle-orm'
 
 import { db } from './db'
 import { alert_rules, devices, display_release_pages, display_releases, ota_jobs, source_snapshots, usage_sources } from './schema'
@@ -48,10 +48,17 @@ export async function list_devices(): Promise<DeviceSummary[]> {
     .leftJoin(display_releases, eq(devices.release_id, display_releases.id))
     .leftJoin(display_release_pages, and(eq(display_release_pages.release_id, display_releases.id), eq(display_release_pages.page_id, devices.active_page_id)))
 
+  const [soruxgpt_snapshot] = await database.select({ values: source_snapshots.values, fetched_at: source_snapshots.fetched_at })
+    .from(source_snapshots).innerJoin(usage_sources, eq(source_snapshots.source_id, usage_sources.id))
+    .where(and(inArray(usage_sources.status, ['active', 'refreshing']), sql`${usage_sources.mapper}->>'provider' = 'soruxgpt_codex'`))
+    .orderBy(desc(source_snapshots.fetched_at)).limit(1)
+  const fresh_soruxgpt_snapshot = soruxgpt_snapshot && Date.now() - soruxgpt_snapshot.fetched_at.getTime() <= 30 * 60 * 1000 ? soruxgpt_snapshot : null
+  const [latest_snapshot] = fresh_soruxgpt_snapshot ? [] : await database.select({ values: source_snapshots.values })
+    .from(source_snapshots).innerJoin(usage_sources, eq(source_snapshots.source_id, usage_sources.id))
+    .where(inArray(usage_sources.status, ['active', 'refreshing'])).orderBy(desc(source_snapshots.fetched_at)).limit(1)
+  const snapshot = fresh_soruxgpt_snapshot ?? latest_snapshot
+
   return Promise.all(rows.map(async (row) => {
-    const [snapshot] = await database.select({ values: source_snapshots.values })
-      .from(source_snapshots).innerJoin(usage_sources, eq(source_snapshots.source_id, usage_sources.id))
-      .orderBy(desc(source_snapshots.fetched_at)).limit(1)
     const [ota_job] = await database.select({ id: ota_jobs.id, status: ota_jobs.status }).from(ota_jobs).where(eq(ota_jobs.device_id, row.id)).orderBy(desc(ota_jobs.created_at)).limit(1)
     return { ...row, source_values: snapshot?.values ?? null, ota_status: ota_job?.status ?? null, ota_job_id: ota_job?.id ?? null }
   }))

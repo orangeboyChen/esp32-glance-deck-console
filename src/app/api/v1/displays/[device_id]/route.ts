@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 
 import { require_api_scope } from '@/server/auth'
 import { db } from '@/server/db'
@@ -32,7 +32,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ devi
     .limit(1)
 
   if (!display) return NextResponse.json({ error: 'display_not_found' }, { status: 404 })
-  const [snapshot] = await db.select({ values: source_snapshots.values, fetched_at: source_snapshots.fetched_at, source_name: usage_sources.name })
-    .from(source_snapshots).innerJoin(usage_sources, eq(source_snapshots.source_id, usage_sources.id)).orderBy(desc(source_snapshots.fetched_at)).limit(1)
+  const [soruxgpt_snapshot] = await db.select({ values: source_snapshots.values, fetched_at: source_snapshots.fetched_at, source_name: usage_sources.name })
+    .from(source_snapshots).innerJoin(usage_sources, eq(source_snapshots.source_id, usage_sources.id))
+    .where(and(inArray(usage_sources.status, ['active', 'refreshing']), sql`${usage_sources.mapper}->>'provider' = 'soruxgpt_codex'`))
+    .orderBy(desc(source_snapshots.fetched_at)).limit(1)
+  const fresh_soruxgpt_snapshot = soruxgpt_snapshot && Date.now() - soruxgpt_snapshot.fetched_at.getTime() <= 30 * 60 * 1000 ? soruxgpt_snapshot : null
+  const [latest_snapshot] = fresh_soruxgpt_snapshot ? [] : await db.select({ values: source_snapshots.values, fetched_at: source_snapshots.fetched_at, source_name: usage_sources.name })
+    .from(source_snapshots).innerJoin(usage_sources, eq(source_snapshots.source_id, usage_sources.id))
+    .where(inArray(usage_sources.status, ['active', 'refreshing'])).orderBy(desc(source_snapshots.fetched_at)).limit(1)
+  const snapshot = fresh_soruxgpt_snapshot ?? latest_snapshot
   return NextResponse.json({ ...display, source: snapshot ?? null, stale: !snapshot || Date.now() - snapshot.fetched_at.getTime() > 30 * 60 * 1000 })
 }
