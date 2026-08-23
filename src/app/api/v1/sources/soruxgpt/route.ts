@@ -6,6 +6,7 @@ import { db } from '@/server/db'
 import { encrypt_secret } from '@/server/secrets'
 import { current_administrator } from '@/server/session'
 import { usage_sources } from '@/server/schema'
+import { normalize_soruxgpt_token, public_soruxgpt_source } from '@/server/soruxgpt'
 import { refresh_usage_source } from '@/server/usage-source'
 
 const soruxgpt_schema = z.object({ token: z.string().min(1).max(8192) })
@@ -16,6 +17,8 @@ export async function POST(request: Request) {
   if (!db) return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
   const body = soruxgpt_schema.safeParse(await request.json())
   if (!body.success) return NextResponse.json({ error: 'invalid_soruxgpt_token' }, { status: 400 })
+  const token = normalize_soruxgpt_token(body.data.token)
+  if (!token) return NextResponse.json({ error: 'invalid_soruxgpt_token' }, { status: 400 })
 
   const configuration = {
     name: source_name,
@@ -25,12 +28,12 @@ export async function POST(request: Request) {
     headers: { accept: 'application/json', authorization: 'Bearer {{SORUXGPT_TOKEN}}' },
     mapper: { provider: 'soruxgpt_codex' },
     refresh_interval_seconds: 900,
-    secret_ciphertext: encrypt_secret({ SORUXGPT_TOKEN: body.data.token }),
+    secret_ciphertext: encrypt_secret({ SORUXGPT_TOKEN: token }),
   }
   const { source, existing, refresh_in_progress, previous_source } = await db.transaction(async (transaction) => {
     await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${source_name}))`)
     const [current] = await transaction.select().from(usage_sources).where(eq(usage_sources.name, source_name)).limit(1)
-    if (current?.status === 'refreshing') return { source: current, existing: true, refresh_in_progress: true }
+    if (current?.status === 'refreshing') return { source: public_soruxgpt_source(current), existing: true, refresh_in_progress: true }
     const updated_source = current
       ? (await transaction.update(usage_sources).set({ ...configuration, status: 'refreshing', last_attempt_at: new Date(), last_error: null }).where(eq(usage_sources.id, current.id)).returning({ id: usage_sources.id, name: usage_sources.name }))[0]
       : (await transaction.insert(usage_sources).values({ ...configuration, status: 'refreshing', last_attempt_at: new Date() }).returning({ id: usage_sources.id, name: usage_sources.name }))[0]

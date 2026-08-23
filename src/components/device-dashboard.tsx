@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl'
 import { useEffect, useState } from 'react'
 
 import { DevicePreview } from './device-preview'
+import { device_needs_attention } from './device-attention'
 import { EnrollmentDialog } from './enrollment-dialog'
 import {
   begin_device_command_atom,
@@ -77,7 +78,7 @@ export function DeviceDashboard({ devices, summary }: DeviceDashboardProps) {
   const [preview_svg_by_device, set_preview_svg_by_device] = useState<Record<string, string>>({})
   const visible_devices = device_filter === 'all'
     ? devices
-    : devices.filter((device) => device.status !== 'online' || device.ota_status !== null || device.active_page_id === 'alerts')
+    : devices.filter(device_needs_attention)
 
   const select_device = (device: DeviceSummary) => {
     set_selected_device_id(device.id)

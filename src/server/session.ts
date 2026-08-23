@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto'
 
 import argon2 from 'argon2'
-import { and, eq, gt } from 'drizzle-orm'
+import { and, eq, gt, sql } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
@@ -17,13 +17,18 @@ export async function administrator_exists() {
   return Boolean(administrator)
 }
 
-export async function create_administrator(email: string, password: string) {
+export async function create_initial_administrator(email: string, password: string) {
   if (!db) throw new Error('database_unavailable')
-  if (await administrator_exists()) throw new Error('administrator_exists')
-
   const password_hash = await argon2.hash(password, { type: argon2.argon2id })
-  const [administrator] = await db.insert(administrators).values({ email, password_hash }).returning()
-  return administrator
+
+  return db.transaction(async (transaction) => {
+    await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext('glance_deck_initial_administrator'))`)
+    const [existing_administrator] = await transaction.select({ id: administrators.id }).from(administrators).limit(1)
+    if (existing_administrator) throw new Error('administrator_exists')
+
+    const [administrator] = await transaction.insert(administrators).values({ email, password_hash }).returning()
+    return administrator
+  })
 }
 
 export async function authenticate_administrator(email: string, password: string) {
@@ -72,6 +77,11 @@ export async function current_administrator() {
 
 export async function clear_session() {
   const cookie_store = await cookies()
+  const token = cookie_store.get(session_cookie_name)?.value
+  const [token_selector, token_secret, extra_part] = token?.split('.') ?? []
+  if (db && token_selector && token_secret && !extra_part) {
+    await db.delete(sessions).where(eq(sessions.token_selector, token_selector))
+  }
   cookie_store.delete(session_cookie_name)
 }
 

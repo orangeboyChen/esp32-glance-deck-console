@@ -1,5 +1,13 @@
 type MappedValue = string | number | null
 
+export function normalize_soruxgpt_token(value: string) {
+  return value.trim().replace(/^Bearer\s+/i, '').trim()
+}
+
+export function public_soruxgpt_source(source: { id: string; name: string }) {
+  return { id: source.id, name: source.name }
+}
+
 type SoruxUsageLimit = {
   current_usage: unknown
   expires_at: unknown

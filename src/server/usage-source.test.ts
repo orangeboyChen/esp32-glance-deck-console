@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { normalize_soruxgpt_codex } from './soruxgpt'
+import { normalize_soruxgpt_codex, normalize_soruxgpt_token, public_soruxgpt_source } from './soruxgpt'
 
 describe('SoruxGPT Codex usage normalization', () => {
   test('aggregates active quota windows and converts USD micro-units', () => {
@@ -45,5 +45,18 @@ describe('SoruxGPT Codex usage normalization', () => {
     expect(normalize_soruxgpt_codex({ usage_limits: [
       { current_usage: 1, limit_value: 2, next_available_at: 'not-a-date' },
     ] }, new Date('2026-08-15T00:00:00Z')).resets_at).toBeNull()
+  })
+})
+
+describe('SoruxGPT source credentials', () => {
+  test('normalizes a raw token and tolerates an accidental Bearer prefix', () => {
+    expect(normalize_soruxgpt_token('  raw-token  ')).toBe('raw-token')
+    expect(normalize_soruxgpt_token('Bearer raw-token')).toBe('raw-token')
+    expect(normalize_soruxgpt_token('bearer   raw-token  ')).toBe('raw-token')
+  })
+
+  test('projects only public source fields', () => {
+    const source = { id: 'source-id', name: 'SoruxGPT Codex', secret_ciphertext: 'encrypted' }
+    expect(public_soruxgpt_source(source)).toEqual({ id: 'source-id', name: 'SoruxGPT Codex' })
   })
 })
