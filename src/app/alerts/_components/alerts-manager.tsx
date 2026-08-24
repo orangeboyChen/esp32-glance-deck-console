@@ -226,7 +226,7 @@ export const AlertsManager = () => {
             <Segmented
               options={['info', 'warning', 'critical'].map((item) => ({ label: translate(`severity_${item}`), value: item }))}
               value={severity}
-              onChange={(value) => setSeverity(String(value))}
+              onChange={(value) => setSeverity(value as 'info' | 'warning' | 'critical')}
             />
           </div>
           <div className="form-field">

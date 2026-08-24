@@ -27,7 +27,7 @@ export type PageConfiguration = {
   available_pages: Array<{ page_id: string }>
 }
 export type PageConfigurationRequest = Pick<PageConfiguration, 'enabled_page_ids' | 'desired_page_id'>
-export type OtaInstallRequest = { firmware_release_id: string }
+export type OtaInstallRequest = { firmware_release_id?: string }
 export type OtaJobRequest = { action: 'cancel' | 'rollback' }
 export type RolloutRequest = { firmware_release_id: string; device_ids: string[]; percentage: number }
 export type RolloutResponse = { jobs: Array<{ id: string }>; selected_count: number; eligible_count: number }

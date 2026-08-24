@@ -1,17 +1,22 @@
-import { NextResponse } from 'next/server'
-
 import { currentAdministrator } from '@/server/auth/session'
 import { refreshUsageSource } from '@/server/source/usage-source'
+import { ApiRouteError, apiRoute } from '@/lib/api-response'
 import type { TestSourceResponse } from '@/lib/api-contracts'
 
-export const POST = async (request: Request, { params }: { params: Promise<{ source_id: string }> }) => {
+type SourceRouteContext = { params: Promise<{ source_id: string }> }
+
+export const POST = apiRoute<TestSourceResponse, SourceRouteContext>(async (request, context) => {
+  void request
+  if (!context) {
+    throw new ApiRouteError('invalid_route_context', 500)
+  }
   if (!(await currentAdministrator())) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    throw new ApiRouteError('unauthorized', 401)
   }
   try {
-    const response: TestSourceResponse = { values: await refreshUsageSource((await params).source_id) }
-    return NextResponse.json(response)
+    const response: TestSourceResponse = { values: await refreshUsageSource((await context.params).source_id) }
+    return { data: response }
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'source_test_failed' }, { status: 400 })
+    throw new ApiRouteError(error instanceof Error ? error.message : 'source_test_failed', 400)
   }
-}
+})

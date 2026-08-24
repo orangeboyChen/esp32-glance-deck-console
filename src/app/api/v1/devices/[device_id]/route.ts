@@ -1,19 +1,24 @@
-import { NextResponse } from 'next/server'
 import { desc, eq } from 'drizzle-orm'
 
 import { requireApiScope } from '@/server/auth/auth'
 import { db } from '@/server/database/db'
 import { deviceCommands, devices, displayReleases } from '@/server/database/schema'
+import { ApiRouteError, apiRoute } from '@/lib/api-response'
 import type { DeviceDetailResponse } from '@/lib/api-contracts'
 
-export const GET = async (request: Request, { params }: { params: Promise<{ device_id: string }> }) => {
+type DeviceRouteContext = { params: Promise<{ device_id: string }> }
+
+export const GET = apiRoute<DeviceDetailResponse, DeviceRouteContext>(async (request, context) => {
+  if (!context) {
+    throw new ApiRouteError('invalid_route_context', 500)
+  }
   if (!(await requireApiScope(request, 'devices:read'))) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    throw new ApiRouteError('unauthorized', 401)
   }
   if (!db) {
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
+    throw new ApiRouteError('database_unavailable', 503)
   }
-  const { device_id: deviceId } = await params
+  const { device_id: deviceId } = await context.params
   const [device] = await db
     .select({
       id: devices.id,
@@ -39,7 +44,7 @@ export const GET = async (request: Request, { params }: { params: Promise<{ devi
     .where(eq(devices.id, deviceId))
     .limit(1)
   if (!device) {
-    return NextResponse.json({ error: 'device_not_found' }, { status: 404 })
+    throw new ApiRouteError('device_not_found', 404)
   }
   const commands = await db
     .select()
@@ -60,5 +65,5 @@ export const GET = async (request: Request, { params }: { params: Promise<{ devi
       confirmed_at: command.confirmed_at?.toISOString() ?? null,
     })),
   }
-  return NextResponse.json(response)
-}
+  return { data: response }
+})

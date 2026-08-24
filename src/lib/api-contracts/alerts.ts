@@ -8,7 +8,7 @@ export type AlertRule = {
   threshold: string
   device_ids: string[]
   page_ids: string[]
-  severity: string
+  severity: 'info' | 'warning' | 'critical'
   message: string
   test_only: boolean
   enabled: boolean
@@ -19,11 +19,11 @@ export type AlertCreateRequest = {
   name: string
   source_id: string
   field: string
-  operator: string
+  operator: 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'neq' | 'contains'
   threshold: string
   device_ids: string[]
   page_ids: string[]
-  severity: string
+  severity: 'info' | 'warning' | 'critical'
   message: string
   test_only: boolean
   enabled: boolean

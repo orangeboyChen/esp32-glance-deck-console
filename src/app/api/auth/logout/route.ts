@@ -1,8 +1,7 @@
-import { NextResponse } from 'next/server'
-
 import { clearSession } from '@/server/auth/session'
+import { apiRoute, noContentResponse } from '@/lib/api-response'
 
-export const POST = async () => {
+export const POST = apiRoute<null>(async () => {
   await clearSession()
-  return new NextResponse(null, { status: 204 })
-}
+  return noContentResponse()
+})

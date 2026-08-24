@@ -1,25 +1,31 @@
-import { NextResponse } from 'next/server'
 import { and, eq, isNull } from 'drizzle-orm'
 
 import { db } from '@/server/database/db'
 import { currentAdministrator } from '@/server/auth/session'
 import { apiTokens } from '@/server/database/schema'
+import { ApiRouteError, apiRoute, noContentResponse } from '@/lib/api-response'
 
-export const DELETE = async (request: Request, { params }: { params: Promise<{ token_id: string }> }) => {
+type TokenRouteContext = { params: Promise<{ token_id: string }> }
+
+export const DELETE = apiRoute<null, TokenRouteContext>(async (request, context) => {
+  void request
+  if (!context) {
+    throw new ApiRouteError('invalid_route_context', 500)
+  }
   if (!(await currentAdministrator())) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    throw new ApiRouteError('unauthorized', 401)
   }
   if (!db) {
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
+    throw new ApiRouteError('database_unavailable', 503)
   }
-  const { token_id: tokenId } = await params
+  const { token_id: tokenId } = await context.params
   const [token] = await db
     .update(apiTokens)
     .set({ revoked_at: new Date() })
     .where(and(eq(apiTokens.id, tokenId), isNull(apiTokens.revoked_at)))
     .returning({ id: apiTokens.id })
   if (!token) {
-    return NextResponse.json({ error: 'token_not_found' }, { status: 404 })
+    throw new ApiRouteError('token_not_found', 404)
   }
-  return new NextResponse(null, { status: 204 })
-}
+  return noContentResponse()
+})

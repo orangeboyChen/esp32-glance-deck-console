@@ -1,20 +1,25 @@
-import { NextResponse } from 'next/server'
 import { and, desc, eq, inArray } from 'drizzle-orm'
 
 import { requireApiScope } from '@/server/auth/auth'
 import { db } from '@/server/database/db'
 import { devices, displayReleasePages, displayReleases, sourceSnapshots, usageSources } from '@/server/database/schema'
+import { ApiRouteError, apiRoute } from '@/lib/api-response'
 import type { DisplayDocument, DisplayResponse, JsonObject } from '@/lib/api-contracts'
 
-export const GET = async (request: Request, { params }: { params: Promise<{ device_id: string }> }) => {
+type DisplayRouteContext = { params: Promise<{ device_id: string }> }
+
+export const GET = apiRoute<DisplayResponse, DisplayRouteContext>(async (request, context) => {
+  if (!context) {
+    throw new ApiRouteError('invalid_route_context', 500)
+  }
   if (!(await requireApiScope(request, 'devices:read'))) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    throw new ApiRouteError('unauthorized', 401)
   }
   if (!db) {
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
+    throw new ApiRouteError('database_unavailable', 503)
   }
 
-  const { device_id: deviceId } = await params
+  const { device_id: deviceId } = await context.params
   const [display] = await db
     .select({
       release_id: displayReleases.id,
@@ -38,7 +43,7 @@ export const GET = async (request: Request, { params }: { params: Promise<{ devi
     .limit(1)
 
   if (!display) {
-    return NextResponse.json({ error: 'display_not_found' }, { status: 404 })
+    throw new ApiRouteError('display_not_found', 404)
   }
   const snapshots = await db
     .select({
@@ -73,5 +78,5 @@ export const GET = async (request: Request, { params }: { params: Promise<{ devi
       : null,
     stale: !snapshot || Date.now() - snapshot.fetched_at.getTime() > 30 * 60 * 1000,
   }
-  return NextResponse.json(response)
-}
+  return { data: response }
+})

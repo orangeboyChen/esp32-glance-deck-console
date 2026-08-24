@@ -13,7 +13,7 @@ export type AlertRule = {
   threshold: string
   device_ids: string[]
   page_ids: string[]
-  severity: string
+  severity: 'info' | 'warning' | 'critical'
   message: string
   test_only: boolean
   enabled: boolean
@@ -35,6 +35,6 @@ export const alertOperatorAtom = atom<Operator>('gte')
 export const alertThresholdAtom = atom('80')
 export const alertDeviceIdsAtom = atom<string[]>([])
 export const alertPageIdsAtom = atom('alerts')
-export const alertSeverityAtom = atom('warning')
+export const alertSeverityAtom = atom<'info' | 'warning' | 'critical'>('warning')
 export const alertMessageAtom = atom('')
 export const alertTestOnlyAtom = atom(false)

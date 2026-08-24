@@ -5,13 +5,19 @@ import { requireApiScope } from '@/server/auth/auth'
 import { db } from '@/server/database/db'
 import { devices, displayReleasePages, displayReleases } from '@/server/database/schema'
 import { fallbackPreviewSvg } from '@/server/display/preview'
+import { ApiRouteError, apiRoute } from '@/lib/api-response'
 
-export const GET = async (request: Request, { params }: { params: Promise<{ device_id: string }> }) => {
+type PreviewRouteContext = { params: Promise<{ device_id: string }> }
+
+export const GET = apiRoute<never, PreviewRouteContext>(async (request, context) => {
+  if (!context) {
+    throw new ApiRouteError('invalid_route_context', 500)
+  }
   if (!(await requireApiScope(request, 'devices:read'))) {
-    return new NextResponse('unauthorized', { status: 401 })
+    throw new ApiRouteError('unauthorized', 401)
   }
 
-  const { device_id: deviceId } = await params
+  const { device_id: deviceId } = await context.params
   const [row] = db
     ? await db
         .select({ preview_svg: displayReleasePages.preview_svg })
@@ -28,4 +34,4 @@ export const GET = async (request: Request, { params }: { params: Promise<{ devi
   return new NextResponse(row?.preview_svg ?? fallbackPreviewSvg, {
     headers: { 'content-type': 'image/svg+xml', 'cache-control': 'no-store' },
   })
-}
+})

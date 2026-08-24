@@ -1,11 +1,10 @@
-import { NextResponse } from 'next/server'
-
 import { requireApiScope } from '@/server/auth/auth'
+import { ApiRouteError, apiRoute } from '@/lib/api-response'
 import type { EventReadyPayload } from '@/lib/api-contracts'
 
-export const GET = async (request: Request) => {
+export const GET = apiRoute<never>(async (request) => {
   if (!(await requireApiScope(request, 'devices:read'))) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    throw new ApiRouteError('unauthorized', 401)
   }
   const stream = new ReadableStream({
     start(controller) {
@@ -15,4 +14,4 @@ export const GET = async (request: Request) => {
     },
   })
   return new Response(stream, { headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' } })
-}
+})

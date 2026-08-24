@@ -1,44 +1,36 @@
-import { NextResponse } from 'next/server'
 import { createApiToken, hashSecret } from '@/server/auth/auth'
 import { db } from '@/server/database/db'
 import { currentAdministrator } from '@/server/auth/session'
 import { apiTokens } from '@/server/database/schema'
 import { desc, isNull } from 'drizzle-orm'
-import type { CreateTokenResponse, ListTokensResponse } from '@/lib/api-contracts'
+import { ApiRouteError, apiRoute, requestJson } from '@/lib/api-response'
+import type { CreateTokenResponse, ListTokensResponse, TokenRequest } from '@/lib/api-contracts'
 import { tokenRequestSchema } from '@/lib/api-contracts'
 
 export const POST = async (request: Request) => {
-  if (!(await currentAdministrator())) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  }
-  if (!db) {
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
-  }
-  const body = tokenRequestSchema.safeParse(await request.json())
-  if (!body.success) {
-    return NextResponse.json({ error: 'invalid_token_request' }, { status: 400 })
-  }
-
-  const token = createApiToken()
-  const [record] = await db
-    .insert(apiTokens)
-    .values({
-      label: body.data.label,
-      token_hash: hashSecret(token),
-      scopes: body.data.scopes,
-    })
-    .returning({ id: apiTokens.id, label: apiTokens.label, scopes: apiTokens.scopes })
-
-  const response: CreateTokenResponse = { token, record }
-  return NextResponse.json(response, { status: 201 })
+  return requestJson<TokenRequest, CreateTokenResponse>(tokenRequestSchema, async (payload) => {
+    if (!(await currentAdministrator())) {
+      throw new ApiRouteError('unauthorized', 401)
+    }
+    if (!db) {
+      throw new ApiRouteError('database_unavailable', 503)
+    }
+    const token = createApiToken()
+    const [record] = await db
+      .insert(apiTokens)
+      .values({ label: payload.label, token_hash: hashSecret(token), scopes: payload.scopes })
+      .returning({ id: apiTokens.id, label: apiTokens.label, scopes: apiTokens.scopes })
+    const response: CreateTokenResponse = { token, record }
+    return { data: response, init: { status: 201 } }
+  })(request)
 }
 
-export const GET = async () => {
+export const GET = apiRoute<ListTokensResponse>(async () => {
   if (!(await currentAdministrator())) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    throw new ApiRouteError('unauthorized', 401)
   }
   if (!db) {
-    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
+    throw new ApiRouteError('database_unavailable', 503)
   }
   const tokens = await db
     .select({ id: apiTokens.id, label: apiTokens.label, scopes: apiTokens.scopes, created_at: apiTokens.created_at })
@@ -48,5 +40,5 @@ export const GET = async () => {
   const response: ListTokensResponse = {
     tokens: tokens.map((item) => ({ ...item, created_at: item.created_at.toISOString() })),
   }
-  return NextResponse.json(response)
-}
+  return { data: response }
+})

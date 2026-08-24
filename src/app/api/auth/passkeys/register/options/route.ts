@@ -1,14 +1,13 @@
-import { NextResponse } from 'next/server'
-
 import { currentAdministrator } from '@/server/auth/session'
 import { beginPasskeyRegistration } from '@/server/auth/webauthn'
+import { ApiRouteError, apiRoute } from '@/lib/api-response'
 import type { PasskeyRegisterOptions } from '@/lib/api-contracts'
 
-export const POST = async () => {
+export const POST = apiRoute(async () => {
   const administrator = await currentAdministrator()
   if (!administrator) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    throw new ApiRouteError('unauthorized', 401)
   }
   const response: PasskeyRegisterOptions = await beginPasskeyRegistration(administrator)
-  return NextResponse.json(response)
-}
+  return { data: response }
+})

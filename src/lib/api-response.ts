@@ -1,19 +1,25 @@
 import { NextResponse } from 'next/server'
 import type { ZodType } from 'zod'
 
-import type { ApiErrorResponse, JsonObject, JsonValue } from '@/lib/api-contracts'
+import type { ApiErrorResponse, JsonValue } from '@/lib/api-contracts'
 
-export type JsonRouteResult<ResponsePayload> = { data: ResponsePayload; init?: ResponseInit }
+export type JsonRouteResult<ResponsePayload> = {
+  data: ResponsePayload
+  init?: ResponseInit
+  finalize?: (response: NextResponse<ResponsePayload>) => NextResponse<ResponsePayload>
+}
+
+export type ApiRouteResult<ResponsePayload> = JsonRouteResult<ResponsePayload> | Response
+
+type ApiRouteHandler = ((request: Request) => Promise<Response>) & ((request: Request, context: unknown) => Promise<Response>)
 
 export class ApiRouteError extends Error {
   readonly status: number
-  readonly issues?: JsonValue[]
 
-  constructor(message: string, status: number, issues?: JsonValue[]) {
+  constructor(message: string, status: number) {
     super(message)
     this.name = 'ApiRouteError'
     this.status = status
-    this.issues = issues
   }
 }
 
@@ -21,29 +27,36 @@ export const apiResponse = <Response>(payload: Response, init?: ResponseInit) =>
 
 export const noContentResponse = () => new NextResponse(null, { status: 204 })
 
-export const requestJson = <RequestPayload extends JsonValue, ResponsePayload extends JsonValue>(
-  schema: ZodType<RequestPayload>,
-  handler: (payload: RequestPayload, request: Request) => Promise<JsonRouteResult<ResponsePayload>>,
-  invalidMessage: string,
+export const apiRoute = <ResponsePayload, RouteContext = undefined>(
+  handler: (request: Request, context?: RouteContext) => Promise<ApiRouteResult<ResponsePayload>>,
 ) => {
-  return async (request: Request) => {
-    const parsed = schema.safeParse(await request.json().catch(() => undefined))
-    if (!parsed.success) {
-      const issues: JsonValue[] = parsed.error.issues.map((issue): JsonObject => ({
-        code: issue.code,
-        message: issue.message,
-        path: issue.path.map((segment) => String(segment)),
-      }))
-      return apiResponse<ApiErrorResponse>({ error: invalidMessage, issues }, { status: 400 })
-    }
+  const route = async (request: Request, context: unknown = undefined) => {
     try {
-      const result = await handler(parsed.data, request)
-      return apiResponse<ResponsePayload>(result.data, result.init)
+      const result = await handler(request, context as RouteContext)
+      if (result instanceof Response) {
+        return result
+      }
+      const response = apiResponse<ResponsePayload>(result.data, result.init)
+      return result.finalize ? result.finalize(response) : response
     } catch (error) {
       if (error instanceof ApiRouteError) {
-        return apiResponse<ApiErrorResponse>({ error: error.message, issues: error.issues }, { status: error.status })
+        return apiResponse<ApiErrorResponse>({ error: error.message }, { status: error.status })
       }
       throw error
     }
   }
+  return route as ApiRouteHandler
+}
+
+export const requestJson = <RequestPayload extends JsonValue, ResponsePayload>(
+  schema: ZodType<RequestPayload>,
+  handler: (payload: RequestPayload, request: Request) => Promise<JsonRouteResult<ResponsePayload>>,
+) => {
+  return apiRoute<ResponsePayload>(async (request) => {
+    const parsed = schema.safeParse(await request.json().catch(() => undefined))
+    if (!parsed.success) {
+      throw new ApiRouteError('invalid_request', 400)
+    }
+    return handler(parsed.data, request)
+  })
 }

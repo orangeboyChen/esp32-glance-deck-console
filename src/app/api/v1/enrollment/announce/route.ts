@@ -1,21 +1,17 @@
-import { NextResponse } from 'next/server'
 import { announceEnrollment } from '@/server/device/enrollment'
+import { ApiRouteError, requestJson } from '@/lib/api-response'
 import { enrollmentAnnounceRequestSchema } from '@/lib/api-contracts'
 import type { EnrollmentAnnounceResponse } from '@/lib/api-contracts'
 
-export const POST = async (request: Request) => {
-  const body = enrollmentAnnounceRequestSchema.safeParse(await request.json())
-  if (!body.success) {
-    return NextResponse.json({ error: 'invalid_enrollment_request' }, { status: 400 })
-  }
+export const POST = requestJson(enrollmentAnnounceRequestSchema, async (payload) => {
   try {
-    const result = await announceEnrollment(body.data.pairing_code, body.data.claim_secret, body.data.board_model)
+    const result = await announceEnrollment(payload.pairing_code, payload.claim_secret, payload.board_model)
     const response: EnrollmentAnnounceResponse = {
       expires_at: result.expires_at.toISOString(),
       status: result.status as EnrollmentAnnounceResponse['status'],
     }
-    return NextResponse.json(response, { status: 201 })
+    return { data: response, init: { status: 201 } }
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'enrollment_request_failed' }, { status: 409 })
+    throw new ApiRouteError(error instanceof Error ? error.message : 'enrollment_request_failed', 409)
   }
-}
+})
