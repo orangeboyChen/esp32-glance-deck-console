@@ -1,12 +1,12 @@
 import { and, eq } from 'drizzle-orm'
 
 import { db } from './db'
-import { alert_rules, device_commands } from './schema'
+import { alertRules, deviceCommands } from './schema'
 
-export type Alert_value = string | number | null
-export type Alert_operator = 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'neq' | 'contains'
+export type AlertValue = string | number | null
+export type AlertOperator = 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'neq' | 'contains'
 
-function numeric(value: Alert_value) {
+const numeric = (value: AlertValue) => {
   if (typeof value === 'number') return value
   if (typeof value === 'string' && value.trim() !== '') {
     const parsed = Number(value)
@@ -15,12 +15,12 @@ function numeric(value: Alert_value) {
   return null
 }
 
-export function matches_alert(value: Alert_value, operator: Alert_operator, threshold: string) {
+export const matchesAlert = (value: AlertValue, operator: AlertOperator, threshold: string) => {
   if (operator === 'contains') return typeof value === 'string' && value.toLowerCase().includes(threshold.toLowerCase())
   if (operator === 'eq' || operator === 'neq') {
-    const left_number = numeric(value)
-    const right_number = numeric(threshold)
-    const equal = left_number !== null && right_number !== null ? left_number === right_number : String(value ?? '') === threshold
+    const leftNumber = numeric(value)
+    const rightNumber = numeric(threshold)
+    const equal = leftNumber !== null && rightNumber !== null ? leftNumber === rightNumber : String(value ?? '') === threshold
     return operator === 'eq' ? equal : !equal
   }
   const left = numeric(value)
@@ -32,30 +32,48 @@ export function matches_alert(value: Alert_value, operator: Alert_operator, thre
   return left <= right
 }
 
-export async function evaluate_alert_rules(source_id: string, values: Record<string, Alert_value>) {
+export const evaluateAlertRules = async (sourceId: string, values: Record<string, AlertValue>) => {
   if (!db) throw new Error('database_unavailable')
-  const rules = await db.select().from(alert_rules).where(and(eq(alert_rules.source_id, source_id), eq(alert_rules.enabled, true)))
-  const evaluated_at = new Date()
+  const rules = await db
+    .select()
+    .from(alertRules)
+    .where(and(eq(alertRules.source_id, sourceId), eq(alertRules.enabled, true)))
+  const evaluatedAt = new Date()
   let triggered = 0
   for (const rule of rules) {
     const value = values[rule.field] ?? null
-    const active = matches_alert(value, rule.operator, rule.threshold)
-    const became_active = active && !rule.active
-    const became_resolved = !active && rule.active
-    await db.update(alert_rules).set({ active, last_value: value, last_evaluated_at: evaluated_at, ...(became_active ? { last_triggered_at: evaluated_at } : {}) }).where(eq(alert_rules.id, rule.id))
-    if (became_active) {
+    const active = matchesAlert(value, rule.operator, rule.threshold)
+    const becameActive = active && !rule.active
+    const becameResolved = !active && rule.active
+    await db
+      .update(alertRules)
+      .set({ active, last_value: value, last_evaluated_at: evaluatedAt, ...(becameActive ? { last_triggered_at: evaluatedAt } : {}) })
+      .where(eq(alertRules.id, rule.id))
+    if (becameActive) {
       triggered += 1
       if (!rule.test_only) {
-        const page_id = rule.page_ids[0]
-        if (page_id) {
-          await db.insert(device_commands).values(rule.device_ids.map((device_id: string) => ({ device_id, action: 'show_page', payload: { page_id, alert_rule_id: rule.id, message: rule.message, severity: rule.severity } })))
+        const pageId = rule.page_ids[0]
+        if (pageId) {
+          await db.insert(deviceCommands).values(
+            rule.device_ids.map((deviceId: string) => ({
+              device_id: deviceId,
+              action: 'show_page',
+              payload: { page_id: pageId, alert_rule_id: rule.id, message: rule.message, severity: rule.severity },
+            })),
+          )
         }
       }
     }
-    if (became_resolved && !rule.test_only) {
-      const page_id = rule.page_ids[0]
-      if (page_id) {
-        await db.insert(device_commands).values(rule.device_ids.map((device_id: string) => ({ device_id, action: 'refresh_release', payload: { alert_rule_id: rule.id, reason: 'alert_resolved' } })))
+    if (becameResolved && !rule.test_only) {
+      const pageId = rule.page_ids[0]
+      if (pageId) {
+        await db.insert(deviceCommands).values(
+          rule.device_ids.map((deviceId: string) => ({
+            device_id: deviceId,
+            action: 'refresh_release',
+            payload: { alert_rule_id: rule.id, reason: 'alert_resolved' },
+          })),
+        )
       }
     }
   }

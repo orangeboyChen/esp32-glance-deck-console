@@ -2,29 +2,50 @@ import { randomBytes } from 'node:crypto'
 
 import { and, asc, eq } from 'drizzle-orm'
 
-import { database_dialect, db } from './db'
-import { publish_device_ota } from './mqtt'
-import { firmware_releases, ota_jobs } from './schema'
+import { databaseDialect, db } from './db'
+import { publishDeviceOta } from './mqtt'
+import { firmwareReleases, otaJobs } from './schema'
 
-export async function dispatch_queued_ota_jobs() {
+export const dispatchQueuedOtaJobs = async () => {
   if (!db) return 0
   let dispatched = 0
   for (let index = 0; index < 10; index += 1) {
     const processed = await db.transaction(async (transaction) => {
-      const query = transaction.select({ id: ota_jobs.id, device_id: ota_jobs.device_id, nonce: ota_jobs.nonce, version: firmware_releases.version, manifest_url: firmware_releases.manifest_url, image_sha256: firmware_releases.image_sha256 })
-        .from(ota_jobs).innerJoin(firmware_releases, eq(ota_jobs.firmware_release_id, firmware_releases.id))
-        .where(eq(ota_jobs.status, 'queued')).orderBy(asc(ota_jobs.created_at)).limit(1)
-      const [job] = database_dialect === 'postgresql'
-        ? await (query as any).for('update', { skipLocked: true })
-        : await query
+      const query = transaction
+        .select({
+          id: otaJobs.id,
+          device_id: otaJobs.device_id,
+          nonce: otaJobs.nonce,
+          version: firmwareReleases.version,
+          manifest_url: firmwareReleases.manifest_url,
+          image_sha256: firmwareReleases.image_sha256,
+        })
+        .from(otaJobs)
+        .innerJoin(firmwareReleases, eq(otaJobs.firmware_release_id, firmwareReleases.id))
+        .where(eq(otaJobs.status, 'queued'))
+        .orderBy(asc(otaJobs.created_at))
+        .limit(1)
+      type QueryResult = Awaited<typeof query>
+      type LockableQuery = { for: (mode: 'update', options: { skipLocked: true }) => Promise<QueryResult> }
+      const [job] =
+        databaseDialect === 'postgresql' ? await (query as unknown as LockableQuery).for('update', { skipLocked: true }) : await query
       if (!job) return false
 
       try {
-        await publish_device_ota(job.device_id, job)
-        await transaction.update(ota_jobs).set({ status: 'sent' })
-          .where(and(eq(ota_jobs.id, job.id), eq(ota_jobs.status, 'queued')))
+        await publishDeviceOta(job.device_id, job)
+        await transaction
+          .update(otaJobs)
+          .set({ status: 'sent' })
+          .where(and(eq(otaJobs.id, job.id), eq(otaJobs.status, 'queued')))
       } catch (error) {
-        await transaction.update(ota_jobs).set({ status: 'failed', error_message: error instanceof Error ? error.message : 'mqtt_publish_failed', completed_at: new Date() }).where(eq(ota_jobs.id, job.id))
+        await transaction
+          .update(otaJobs)
+          .set({
+            status: 'failed',
+            error_message: error instanceof Error ? error.message : 'mqtt_publish_failed',
+            completed_at: new Date(),
+          })
+          .where(eq(otaJobs.id, job.id))
       }
       return true
     })
@@ -34,6 +55,6 @@ export async function dispatch_queued_ota_jobs() {
   return dispatched
 }
 
-export function create_ota_nonce() {
+export const createOtaNonce = () => {
   return randomBytes(24).toString('base64url')
 }

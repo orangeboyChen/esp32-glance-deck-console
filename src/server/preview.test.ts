@@ -1,15 +1,15 @@
 import { describe, expect, test } from 'bun:test'
 
-import { DISPLAY_HEIGHT, DISPLAY_WIDTH, MONO1_IMAGE_BYTES, fallback_preview_svg, render_device_bitmap, render_display_preview } from './preview'
+import { DISPLAY_HEIGHT, DISPLAY_WIDTH, MONO1_IMAGE_BYTES, fallbackPreviewSvg, renderDeviceBitmap, renderDisplayPreview } from './preview'
 
 describe('fallback preview', () => {
   test('uses the physical display dimensions', () => {
-    expect(fallback_preview_svg).toContain('width="400"')
-    expect(fallback_preview_svg).toContain('height="300"')
+    expect(fallbackPreviewSvg).toContain('width="400"')
+    expect(fallbackPreviewSvg).toContain('height="300"')
   })
 
   test('renders escaped display document content at the physical size', () => {
-    const svg = render_display_preview({ title: 'Usage <today>', subtitle: 'Subscription', lines: [{ label: 'Today', value: '72%' }] })
+    const svg = renderDisplayPreview({ title: 'Usage <today>', subtitle: 'Subscription', lines: [{ label: 'Today', value: '72%' }] })
     expect(svg).toContain('width="400"')
     expect(svg).toContain('height="300"')
     expect(svg).toContain('Usage &lt;today&gt;')
@@ -18,22 +18,30 @@ describe('fallback preview', () => {
   })
 
   test('rasterizes Chinese text into a fixed-size firmware bitmap', () => {
-    const rendered = render_device_bitmap({ title: '今日用量', subtitle: '订阅窗口', lines: [{ label: '剩余时间', value: '2 小时' }] })
+    const rendered = renderDeviceBitmap({ title: '今日用量', subtitle: '订阅窗口', lines: [{ label: '剩余时间', value: '2 小时' }] })
     expect(rendered.device_image).toHaveLength(MONO1_IMAGE_BYTES)
     expect(rendered.device_image.some((byte) => byte !== 0)).toBe(true)
     expect(rendered.preview_svg).toContain('今日用量')
-    expect(DISPLAY_WIDTH * DISPLAY_HEIGHT / 8).toBe(MONO1_IMAGE_BYTES)
+    expect((DISPLAY_WIDTH * DISPLAY_HEIGHT) / 8).toBe(MONO1_IMAGE_BYTES)
   })
 
   test('rasterizes Japanese text into a fixed-size firmware bitmap', () => {
-    const rendered = render_device_bitmap({ title: '今日の使用量', subtitle: 'サブスクリプション', lines: [{ label: '残り時間', value: '2 時間' }] })
+    const rendered = renderDeviceBitmap({
+      title: '今日の使用量',
+      subtitle: 'サブスクリプション',
+      lines: [{ label: '残り時間', value: '2 時間' }],
+    })
     expect(rendered.device_image).toHaveLength(MONO1_IMAGE_BYTES)
     expect(rendered.device_image.some((byte) => byte !== 0)).toBe(true)
     expect(rendered.preview_svg).toContain('今日の使用量')
   })
 
   test('renders semantic icons and a bounded token progress meter', () => {
-    const rendered = render_device_bitmap({ title: 'Token balance', icon: 'usage', progress: { value: 72, max: 100, label: 'Used', unit: 'tokens' } })
+    const rendered = renderDeviceBitmap({
+      title: 'Token balance',
+      icon: 'usage',
+      progress: { value: 72, max: 100, label: 'Used', unit: 'tokens' },
+    })
     expect(rendered.preview_svg).toContain('width="344"')
     expect(rendered.preview_svg).toContain('72%')
     expect(rendered.preview_svg).toContain('m3 25 8-8 5 5 13-13')
@@ -41,13 +49,13 @@ describe('fallback preview', () => {
   })
 
   test('clamps an over-limit progress value', () => {
-    const rendered = render_display_preview({ title: 'Usage', progress: { value: 200, max: 100 } })
+    const rendered = renderDisplayPreview({ title: 'Usage', progress: { value: 200, max: 100 } })
     expect(rendered).toContain('100%')
     expect(rendered).toContain('width="340"')
   })
 
   test('renders three bounded usage meters at the documented row positions', () => {
-    const rendered = render_display_preview({
+    const rendered = renderDisplayPreview({
       title: 'Usage',
       progresses: [
         { label: 'Day', value: 79, max: 776, unit: 'USD' },
@@ -64,7 +72,7 @@ describe('fallback preview', () => {
   })
 
   test('spaces Usage detail groups at the documented 54 px pitch', () => {
-    const rendered = render_display_preview({
+    const rendered = renderDisplayPreview({
       title: 'Usage',
       subtitle: 'Codex',
       icon: 'usage',

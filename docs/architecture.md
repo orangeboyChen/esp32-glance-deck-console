@@ -15,15 +15,15 @@ Data sources --> Control plane --> MQTT broker <-- Glance Deck
 
 ## Ownership
 
-| Concern | Owner |
-| --- | --- |
-| Subscription/API data collection and calculations | Control plane |
-| Display documents, device configuration, OTA releases | Control plane |
-| Alerts, automation, and history | Control plane and/or Home Assistant |
-| HA entities and automations sourced from control-plane API | Home Assistant |
-| Wi-Fi/MQTT reconnect and cached current display | Device |
-| Reflective screen rendering and local button navigation | Device |
-| Third-party API credentials | Encrypted control-plane storage only |
+| Concern                                                    | Owner                                |
+| ---------------------------------------------------------- | ------------------------------------ |
+| Subscription/API data collection and calculations          | Control plane                        |
+| Display documents, device configuration, OTA releases      | Control plane                        |
+| Alerts, automation, and history                            | Control plane and/or Home Assistant  |
+| HA entities and automations sourced from control-plane API | Home Assistant                       |
+| Wi-Fi/MQTT reconnect and cached current display            | Device                               |
+| Reflective screen rendering and local button navigation    | Device                               |
+| Third-party API credentials                                | Encrypted control-plane storage only |
 
 ## Firmware layers
 

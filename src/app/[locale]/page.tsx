@@ -1,10 +1,12 @@
 import { DeviceDashboard } from '@/components/device-dashboard'
-import { dashboard_summary, list_devices } from '@/server/devices'
-import { require_page_administrator } from '@/server/session'
+import { dashboardSummary, listDevices } from '@/server/devices'
+import { requirePageAdministrator } from '@/server/session'
 
-export default async function overview_page({ params }: { params: Promise<{ locale: string }> }) {
+const overviewPage = async ({ params }: { params: Promise<{ locale: string }> }) => {
   const { locale } = await params
-  await require_page_administrator(locale)
-  const [devices, summary] = await Promise.all([list_devices(), dashboard_summary()])
+  await requirePageAdministrator(locale)
+  const [devices, summary] = await Promise.all([listDevices(), dashboardSummary()])
   return <DeviceDashboard devices={devices} summary={summary} />
 }
+
+export default overviewPage

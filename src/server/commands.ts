@@ -1,32 +1,40 @@
 import { and, asc, eq } from 'drizzle-orm'
 
-import { database_dialect, db } from './db'
-import { publish_device_command } from './mqtt'
-import { device_commands } from './schema'
+import { databaseDialect, db } from './db'
+import { publishDeviceCommand } from './mqtt'
+import { deviceCommands } from './schema'
 
-export async function dispatch_queued_commands() {
+export const dispatchQueuedCommands = async () => {
   if (!db) return 0
   let dispatched = 0
   for (let index = 0; index < 20; index += 1) {
     const processed = await db.transaction(async (transaction) => {
-      const query = transaction.select().from(device_commands)
-        .where(eq(device_commands.status, 'queued'))
-        .orderBy(asc(device_commands.created_at))
+      const query = transaction
+        .select()
+        .from(deviceCommands)
+        .where(eq(deviceCommands.status, 'queued'))
+        .orderBy(asc(deviceCommands.created_at))
         .limit(1)
-      const [command] = database_dialect === 'postgresql'
-        ? await (query as any).for('update', { skipLocked: true })
-        : await query
+      type QueryResult = Awaited<typeof query>
+      type LockableQuery = { for: (mode: 'update', options: { skipLocked: true }) => Promise<QueryResult> }
+      const [command] =
+        databaseDialect === 'postgresql' ? await (query as unknown as LockableQuery).for('update', { skipLocked: true }) : await query
       if (!command) return false
 
       try {
-        await publish_device_command(command.device_id, command)
-        await transaction.update(device_commands).set({ status: 'sent' })
-          .where(and(eq(device_commands.id, command.id), eq(device_commands.status, 'queued')))
+        await publishDeviceCommand(command.device_id, command)
+        await transaction
+          .update(deviceCommands)
+          .set({ status: 'sent' })
+          .where(and(eq(deviceCommands.id, command.id), eq(deviceCommands.status, 'queued')))
       } catch (error) {
-        await transaction.update(device_commands).set({
-          status: 'failed',
-          error_message: error instanceof Error ? error.message : 'mqtt_publish_failed',
-        }).where(eq(device_commands.id, command.id))
+        await transaction
+          .update(deviceCommands)
+          .set({
+            status: 'failed',
+            error_message: error instanceof Error ? error.message : 'mqtt_publish_failed',
+          })
+          .where(eq(deviceCommands.id, command.id))
       }
       return true
     })

@@ -1,20 +1,20 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { authenticate_administrator, create_session } from '@/server/session'
+import { authenticateAdministrator, createSession } from '@/server/session'
 
-const login_schema = z.object({
+const loginSchema = z.object({
   email: z.email(),
   password: z.string().min(1),
 })
 
-export async function POST(request: Request) {
-  const body = login_schema.safeParse(await request.json())
+export const POST = async (request: Request) => {
+  const body = loginSchema.safeParse(await request.json())
   if (!body.success) return NextResponse.json({ error: 'invalid_login' }, { status: 400 })
 
-  const administrator = await authenticate_administrator(body.data.email, body.data.password)
+  const administrator = await authenticateAdministrator(body.data.email, body.data.password)
   if (!administrator) return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 })
 
-  await create_session(administrator.id)
+  await createSession(administrator.id)
   return NextResponse.json({ administrator: { id: administrator.id, email: administrator.email } })
 }

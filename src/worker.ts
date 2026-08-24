@@ -1,35 +1,50 @@
-import { dispatch_queued_commands } from './server/commands'
+import { dispatchQueuedCommands } from './server/commands'
 import { inArray, or, and, eq, lt } from 'drizzle-orm'
 import { db } from './server/db'
-import { start_device_state_consumer } from './server/mqtt'
-import { dispatch_queued_ota_jobs } from './server/ota'
-import { initialize_database } from './server/database-initializer'
-import { usage_sources } from './server/schema'
-import { refresh_usage_source } from './server/usage-source'
+import { startDeviceStateConsumer } from './server/mqtt'
+import { dispatchQueuedOtaJobs } from './server/ota'
+import { initializeDatabase } from './server/database-initializer'
+import { usageSources } from './server/schema'
+import { refreshUsageSource } from './server/usage-source'
 
-const worker_name = 'glance-deck-worker'
+const workerName = 'glance-deck-worker'
 
-async function tick() {
+const tick = async () => {
   try {
-    const count = await dispatch_queued_commands()
-    const ota_count = await dispatch_queued_ota_jobs()
-    if (count > 0) console.log(`${worker_name}: dispatched ${count} device command(s)`)
-    if (ota_count > 0) console.log(`${worker_name}: dispatched ${ota_count} OTA job(s)`)
+    const count = await dispatchQueuedCommands()
+    const otaCount = await dispatchQueuedOtaJobs()
+    if (count > 0) console.log(`${workerName}: dispatched ${count} device command(s)`)
+    if (otaCount > 0) console.log(`${workerName}: dispatched ${otaCount} OTA job(s)`)
   } catch (error) {
-    console.error(`${worker_name}: command dispatch failed`, error)
+    console.error(`${workerName}: command dispatch failed`, error)
   }
   if (!db) return
   const now = Date.now()
-  const stale_claim_before = new Date(now - 30 * 60 * 1000)
-  const sources = await db.select().from(usage_sources).where(or(inArray(usage_sources.status, ['active', 'error']), and(eq(usage_sources.status, 'refreshing'), lt(usage_sources.last_attempt_at, stale_claim_before))))
-  await Promise.all(sources.filter((source) => !source.last_attempt_at || now - source.last_attempt_at.getTime() >= source.refresh_interval_seconds * 1000)
-    .map(async (source) => {
-      try { await refresh_usage_source(source.id) } catch (error) { console.error(`${worker_name}: source refresh failed`, error) }
-    }))
+  const staleClaimBefore = new Date(now - 30 * 60 * 1000)
+  const sources = await db
+    .select()
+    .from(usageSources)
+    .where(
+      or(
+        inArray(usageSources.status, ['active', 'error']),
+        and(eq(usageSources.status, 'refreshing'), lt(usageSources.last_attempt_at, staleClaimBefore)),
+      ),
+    )
+  await Promise.all(
+    sources
+      .filter((source) => !source.last_attempt_at || now - source.last_attempt_at.getTime() >= source.refresh_interval_seconds * 1000)
+      .map(async (source) => {
+        try {
+          await refreshUsageSource(source.id)
+        } catch (error) {
+          console.error(`${workerName}: source refresh failed`, error)
+        }
+      }),
+  )
 }
 
-await initialize_database()
-console.log(`${worker_name}: ready to process command, source, and OTA jobs`)
-start_device_state_consumer()
+await initializeDatabase()
+console.log(`${workerName}: ready to process command, source, and OTA jobs`)
+startDeviceStateConsumer()
 await tick()
 setInterval(tick, 1_000)

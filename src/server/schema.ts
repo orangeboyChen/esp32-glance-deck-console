@@ -1,23 +1,23 @@
-import { database_dialect, database_url } from './db'
-import * as postgresql_schema from './schema.postgres'
-import * as sqlite_schema from './schema.sqlite'
+import { databaseDialect, databaseUrl } from './db'
+import * as postgresqlSchema from './schema.postgres'
+import * as sqliteSchema from './schema.sqlite'
 
-const schema = database_dialect === 'sqlite' && database_url ? sqlite_schema : postgresql_schema
+const schema = databaseDialect === 'sqlite' && databaseUrl ? sqliteSchema : postgresqlSchema
 
-export const administrators: any = schema.administrators
-export const sessions: any = schema.sessions
-export const passkeys: any = schema.passkeys
-export const webauthn_challenges: any = schema.webauthn_challenges
-export const display_releases: any = schema.display_releases
-export const display_release_pages: any = schema.display_release_pages
-export const usage_sources: any = schema.usage_sources
-export const source_snapshots: any = schema.source_snapshots
-export const alert_rules: any = schema.alert_rules
-export const display_bindings: any = schema.display_bindings
-export const devices: any = schema.devices
-export const device_enrollment_requests: any = schema.device_enrollment_requests
-export const device_commands: any = schema.device_commands
-export const firmware_releases: any = schema.firmware_releases
-export const ota_jobs: any = schema.ota_jobs
-export const api_tokens: any = schema.api_tokens
-export const audit_events: any = schema.audit_events
+export const administrators = schema.administrators as typeof postgresqlSchema.administrators
+export const sessions = schema.sessions as typeof postgresqlSchema.sessions
+export const passkeys = schema.passkeys as typeof postgresqlSchema.passkeys
+export const webauthnChallenges = schema.webauthnChallenges as typeof postgresqlSchema.webauthnChallenges
+export const displayReleases = schema.displayReleases as typeof postgresqlSchema.displayReleases
+export const displayReleasePages = schema.displayReleasePages as typeof postgresqlSchema.displayReleasePages
+export const usageSources = schema.usageSources as typeof postgresqlSchema.usageSources
+export const sourceSnapshots = schema.sourceSnapshots as typeof postgresqlSchema.sourceSnapshots
+export const alertRules = schema.alertRules as typeof postgresqlSchema.alertRules
+export const displayBindings = schema.displayBindings as typeof postgresqlSchema.displayBindings
+export const devices = schema.devices as typeof postgresqlSchema.devices
+export const deviceEnrollmentRequests = schema.deviceEnrollmentRequests as typeof postgresqlSchema.deviceEnrollmentRequests
+export const deviceCommands = schema.deviceCommands as typeof postgresqlSchema.deviceCommands
+export const firmwareReleases = schema.firmwareReleases as typeof postgresqlSchema.firmwareReleases
+export const otaJobs = schema.otaJobs as typeof postgresqlSchema.otaJobs
+export const apiTokens = schema.apiTokens as typeof postgresqlSchema.apiTokens
+export const auditEvents = schema.auditEvents as typeof postgresqlSchema.auditEvents

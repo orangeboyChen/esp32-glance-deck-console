@@ -1,4 +1,4 @@
-const attention_ota_statuses = new Set([
+const attentionOtaStatuses = new Set([
   'awaiting_confirmation',
   'queued',
   'sent',
@@ -15,8 +15,10 @@ type AttentionDevice = {
   status: string
 }
 
-export function device_needs_attention(device: AttentionDevice) {
-  return device.status !== 'online'
-    || device.active_page_id === 'alerts'
-    || (device.ota_status !== null && attention_ota_statuses.has(device.ota_status))
+export const deviceNeedsAttention = (device: AttentionDevice) => {
+  return (
+    device.status !== 'online' ||
+    device.active_page_id === 'alerts' ||
+    (device.ota_status !== null && attentionOtaStatuses.has(device.ota_status))
+  )
 }

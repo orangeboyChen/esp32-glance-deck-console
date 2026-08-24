@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 
-import { clear_session } from '@/server/session'
+import { clearSession } from '@/server/session'
 
-export async function POST() {
-  await clear_session()
+export const POST = async () => {
+  await clearSession()
   return new NextResponse(null, { status: 204 })
 }

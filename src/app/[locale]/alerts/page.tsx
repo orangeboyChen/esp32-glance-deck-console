@@ -1,8 +1,10 @@
 import { AlertsManager } from '@/components/alerts-manager'
-import { require_page_administrator } from '@/server/session'
+import { requirePageAdministrator } from '@/server/session'
 
-export default async function alerts_page({ params }: { params: Promise<{ locale: string }> }) {
+const alertsPage = async ({ params }: { params: Promise<{ locale: string }> }) => {
   const { locale } = await params
-  await require_page_administrator(locale)
+  await requirePageAdministrator(locale)
   return <AlertsManager />
 }
+
+export default alertsPage

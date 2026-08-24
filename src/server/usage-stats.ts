@@ -12,39 +12,40 @@ export type DerivedUsage = {
   week_percent: number | null
 }
 
-function start_of_day(now: Date) {
+const startOfDay = (now: Date) => {
   const start = new Date(now)
   start.setHours(0, 0, 0, 0)
   return start
 }
 
-function start_of_week(now: Date) {
-  const start = start_of_day(now)
+const startOfWeek = (now: Date) => {
+  const start = startOfDay(now)
   const day = start.getDay()
   start.setDate(start.getDate() - (day === 0 ? 6 : day - 1))
   return start
 }
 
-function numeric(value: UsageValue) {
+const numeric = (value: UsageValue) => {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
-function delta_since(snapshots: UsageSnapshot[], boundary: Date, current_used: number) {
+const deltaSince = (snapshots: UsageSnapshot[], boundary: Date, currentUsed: number) => {
   const baseline = snapshots.find((snapshot) => snapshot.fetched_at >= boundary)
-  const baseline_used = baseline ? numeric(baseline.values.used) : null
-  if (baseline_used === null || current_used < baseline_used) return null
-  return current_used - baseline_used
+  const baselineUsed = baseline ? numeric(baseline.values.used) : null
+  if (baselineUsed === null || currentUsed < baselineUsed) return null
+  return currentUsed - baselineUsed
 }
 
-export function derive_usage_metrics(current: Record<string, UsageValue>, snapshots: UsageSnapshot[], now = new Date()): DerivedUsage {
-  const current_used = numeric(current.used)
+export const deriveUsageMetrics = (current: Record<string, UsageValue>, snapshots: UsageSnapshot[], now = new Date()): DerivedUsage => {
+  const currentUsed = numeric(current.used)
   const total = numeric(current.total)
-  if (current_used === null) {
+  if (currentUsed === null) {
     return { today_used: null, today_percent: null, week_used: null, week_percent: null }
   }
 
-  const today_used = delta_since(snapshots, start_of_day(now), current_used)
-  const week_used = delta_since(snapshots, start_of_week(now), current_used)
-  const percent = (value: number | null) => value === null || total === null || total <= 0 ? null : Math.min(100, Math.max(0, (value / total) * 100))
-  return { today_used, today_percent: percent(today_used), week_used, week_percent: percent(week_used) }
+  const todayUsed = deltaSince(snapshots, startOfDay(now), currentUsed)
+  const weekUsed = deltaSince(snapshots, startOfWeek(now), currentUsed)
+  const percent = (value: number | null) =>
+    value === null || total === null || total <= 0 ? null : Math.min(100, Math.max(0, (value / total) * 100))
+  return { today_used: todayUsed, today_percent: percent(todayUsed), week_used: weekUsed, week_percent: percent(weekUsed) }
 }

@@ -1,8 +1,10 @@
 import { SourcesManager } from '@/components/sources-manager'
-import { require_page_administrator } from '@/server/session'
+import { requirePageAdministrator } from '@/server/session'
 
-export default async function sources_page({ params }: { params: Promise<{ locale: string }> }) {
+const sourcesPage = async ({ params }: { params: Promise<{ locale: string }> }) => {
   const { locale } = await params
-  await require_page_administrator(locale)
+  await requirePageAdministrator(locale)
   return <SourcesManager />
 }
+
+export default sourcesPage

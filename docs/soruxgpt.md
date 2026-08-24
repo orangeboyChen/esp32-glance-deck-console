@@ -27,15 +27,15 @@ integers are converted to USD before display.
 
 It persists the following normalized fields:
 
-| Field | Meaning | Display use |
-| --- | --- | --- |
-| `plan_name` | Subscription or plan label | Page title/subtitle |
-| `used` | Current consumed amount | Progress meter numerator |
-| `total` | Current allowance | Progress meter denominator |
-| `remaining` | Remaining amount, if supplied | Summary row |
-| `unit` | Token or request unit | Meter suffix |
-| `resets_at` | Reset timestamp | Summary row |
-| `status` | Provider status | Status/alert page |
+| Field       | Meaning                       | Display use                |
+| ----------- | ----------------------------- | -------------------------- |
+| `plan_name` | Subscription or plan label    | Page title/subtitle        |
+| `used`      | Current consumed amount       | Progress meter numerator   |
+| `total`     | Current allowance             | Progress meter denominator |
+| `remaining` | Remaining amount, if supplied | Summary row                |
+| `unit`      | Token or request unit         | Meter suffix               |
+| `resets_at` | Reset timestamp               | Summary row                |
+| `status`    | Provider status               | Status/alert page          |
 
 When numeric `used` and `total` are present, the usage binding automatically
 adds the `usage` icon and a bounded progress meter to the firmware bitmap.

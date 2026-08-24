@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 
-import { preview_cc_switch_import } from './cc-switch-import'
+import { previewCcSwitchImport } from './cc-switch-import'
 
 describe('CC Switch import preview', () => {
   test('redacts request credentials without executing the extractor', () => {
-    const preview = preview_cc_switch_import({
+    const preview = previewCcSwitchImport({
       extractor: 'return { used: payload.used, remaining: payload.left }',
       interval: 900,
       request: {
@@ -33,7 +33,9 @@ describe('CC Switch import preview', () => {
   })
 
   test('rejects malformed or unsupported requests', () => {
-    expect(() => preview_cc_switch_import({ request: { url: 'file:///etc/passwd' } })).toThrow('cc_switch_request_url_invalid')
-    expect(() => preview_cc_switch_import({ request: { url: 'https://example.test', method: 'DELETE' } })).toThrow('cc_switch_request_method_invalid')
+    expect(() => previewCcSwitchImport({ request: { url: 'file:///etc/passwd' } })).toThrow('cc_switch_request_url_invalid')
+    expect(() => previewCcSwitchImport({ request: { url: 'https://example.test', method: 'DELETE' } })).toThrow(
+      'cc_switch_request_method_invalid',
+    )
   })
 })

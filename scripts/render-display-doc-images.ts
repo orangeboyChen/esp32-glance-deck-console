@@ -4,14 +4,14 @@ import { fileURLToPath } from 'node:url'
 
 import sharp from 'sharp'
 
-import { DISPLAY_HEIGHT, DISPLAY_WIDTH, render_device_bitmap, type Display_document } from '../src/server/preview'
+import { DISPLAY_HEIGHT, DISPLAY_WIDTH, renderDeviceBitmap, type DisplayDocument } from '../src/server/preview'
 
-const script_directory = fileURLToPath(new URL('.', import.meta.url))
-const image_directory = resolve(script_directory, '../../docs/image')
+const scriptDirectory = fileURLToPath(new URL('.', import.meta.url))
+const imageDirectory = resolve(scriptDirectory, '../../docs/image')
 const background = 242
 const foreground = 38
 
-const pages: Record<string, Display_document> = {
+const pages: Record<string, DisplayDocument> = {
   usage: {
     title: 'Usage',
     subtitle: 'Codex',
@@ -50,20 +50,20 @@ const pages: Record<string, Display_document> = {
   },
 }
 
-function overlay_page_indicator(frame: Buffer, active_index: number, page_count: number) {
+const overlayPageIndicator = (frame: Buffer, activeIndex: number, pageCount: number) => {
   const overlay = Buffer.from(frame)
   const spacing = 14
-  const center_x = DISPLAY_WIDTH / 2
-  const center_y = DISPLAY_HEIGHT - 22
-  const group_width = (page_count - 1) * spacing
-  for (let index = 0; index < page_count; index += 1) {
-    const circle_x = center_x - group_width / 2 + index * spacing
-    for (let y = circle_y_start(center_y); y <= center_y + 4; y += 1) {
-      for (let x = circle_x - 4; x <= circle_x + 4; x += 1) {
-        const distance = (x - circle_x) ** 2 + (y - center_y) ** 2
+  const centerX = DISPLAY_WIDTH / 2
+  const centerY = DISPLAY_HEIGHT - 22
+  const groupWidth = (pageCount - 1) * spacing
+  for (let index = 0; index < pageCount; index += 1) {
+    const circleX = centerX - groupWidth / 2 + index * spacing
+    for (let y = circleYStart(centerY); y <= centerY + 4; y += 1) {
+      for (let x = circleX - 4; x <= circleX + 4; x += 1) {
+        const distance = (x - circleX) ** 2 + (y - centerY) ** 2
         const offset = y * DISPLAY_WIDTH + x
         if (distance <= 16) overlay[offset >> 3] &= ~(0x80 >> (offset & 7))
-        if (distance <= 16 && (index === active_index || distance >= 9)) {
+        if (distance <= 16 && (index === activeIndex || distance >= 9)) {
           overlay[offset >> 3] |= 0x80 >> (offset & 7)
         }
       }
@@ -72,21 +72,26 @@ function overlay_page_indicator(frame: Buffer, active_index: number, page_count:
   return overlay
 }
 
-function circle_y_start(center_y: number) {
-  return center_y - 4
+const circleYStart = (centerY: number) => {
+  return centerY - 4
 }
 
-async function write_png(name: string, frame: Buffer) {
+const writePng = async (name: string, frame: Buffer) => {
   const pixels = Buffer.alloc(DISPLAY_WIDTH * DISPLAY_HEIGHT)
   for (let pixel = 0; pixel < pixels.length; pixel += 1) {
     pixels[pixel] = frame[pixel >> 3] & (0x80 >> (pixel & 7)) ? foreground : background
   }
-  await writeFile(resolve(image_directory, `${name}.png`), await sharp(pixels, { raw: { width: DISPLAY_WIDTH, height: DISPLAY_HEIGHT, channels: 1 } }).png().toBuffer())
+  await writeFile(
+    resolve(imageDirectory, `${name}.png`),
+    await sharp(pixels, { raw: { width: DISPLAY_WIDTH, height: DISPLAY_HEIGHT, channels: 1 } })
+      .png()
+      .toBuffer(),
+  )
 }
 
-await mkdir(image_directory, { recursive: true })
-for (const [name, document] of Object.entries(pages)) await write_png(name, render_device_bitmap(document).device_image)
-const usage = render_device_bitmap(pages.usage).device_image
-await write_png('offline', usage)
-await write_png('navigation', overlay_page_indicator(usage, 1, 3))
-await write_png('page-indicator', overlay_page_indicator(usage, 1, 3))
+await mkdir(imageDirectory, { recursive: true })
+for (const [name, document] of Object.entries(pages)) await writePng(name, renderDeviceBitmap(document).device_image)
+const usage = renderDeviceBitmap(pages.usage).device_image
+await writePng('offline', usage)
+await writePng('navigation', overlayPageIndicator(usage, 1, 3))
+await writePng('page-indicator', overlayPageIndicator(usage, 1, 3))

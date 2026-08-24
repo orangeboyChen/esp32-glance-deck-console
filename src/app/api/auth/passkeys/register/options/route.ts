@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 
-import { current_administrator } from '@/server/session'
-import { begin_passkey_registration } from '@/server/webauthn'
+import { currentAdministrator } from '@/server/session'
+import { beginPasskeyRegistration } from '@/server/webauthn'
 
-export async function POST() {
-  const administrator = await current_administrator()
+export const POST = async () => {
+  const administrator = await currentAdministrator()
   if (!administrator) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  return NextResponse.json(await begin_passkey_registration(administrator))
+  return NextResponse.json(await beginPasskeyRegistration(administrator))
 }

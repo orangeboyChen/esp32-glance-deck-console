@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 
-import { require_api_scope } from '@/server/auth'
+import { requireApiScope } from '@/server/auth'
 
-export async function GET(request: Request) {
-  if (!await require_api_scope(request, 'devices:read')) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+export const GET = async (request: Request) => {
+  if (!(await requireApiScope(request, 'devices:read'))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const stream = new ReadableStream({
     start(controller) {
       controller.enqueue(new TextEncoder().encode('event: ready\\ndata: {"status":"connected"}\\n\\n'))

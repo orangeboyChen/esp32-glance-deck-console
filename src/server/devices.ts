@@ -1,7 +1,7 @@
 import { and, count, desc, eq, gte, inArray } from 'drizzle-orm'
 
 import { db } from './db'
-import { alert_rules, devices, display_release_pages, display_releases, ota_jobs, source_snapshots, usage_sources } from './schema'
+import { alertRules, devices, displayReleasePages, displayReleases, otaJobs, sourceSnapshots, usageSources } from './schema'
 
 export type DeviceSummary = {
   id: string
@@ -23,7 +23,7 @@ export type DeviceSummary = {
   ota_job_id: string | null
 }
 
-export async function list_devices(): Promise<DeviceSummary[]> {
+export const listDevices = async (): Promise<DeviceSummary[]> => {
   const database = db
   if (!database) return []
 
@@ -42,34 +42,48 @@ export async function list_devices(): Promise<DeviceSummary[]> {
       battery_mv: devices.battery_mv,
       power_updated_at: devices.power_updated_at,
       last_seen_at: devices.last_seen_at,
-      preview_svg: display_release_pages.preview_svg,
+      preview_svg: displayReleasePages.preview_svg,
     })
     .from(devices)
-    .leftJoin(display_releases, eq(devices.release_id, display_releases.id))
-    .leftJoin(display_release_pages, and(eq(display_release_pages.release_id, display_releases.id), eq(display_release_pages.page_id, devices.active_page_id)))
+    .leftJoin(displayReleases, eq(devices.release_id, displayReleases.id))
+    .leftJoin(
+      displayReleasePages,
+      and(eq(displayReleasePages.release_id, displayReleases.id), eq(displayReleasePages.page_id, devices.active_page_id)),
+    )
 
-  const snapshots = await database.select({ values: source_snapshots.values, fetched_at: source_snapshots.fetched_at, mapper: usage_sources.mapper })
-    .from(source_snapshots).innerJoin(usage_sources, eq(source_snapshots.source_id, usage_sources.id))
-    .where(inArray(usage_sources.status, ['active', 'refreshing']))
-    .orderBy(desc(source_snapshots.fetched_at)).limit(100)
-  const soruxgpt_snapshot = snapshots.find((snapshot) => snapshot.mapper?.provider === 'soruxgpt_codex')
-  const fresh_soruxgpt_snapshot = soruxgpt_snapshot && Date.now() - soruxgpt_snapshot.fetched_at.getTime() <= 30 * 60 * 1000 ? soruxgpt_snapshot : null
-  const latest_snapshot = fresh_soruxgpt_snapshot ? undefined : snapshots[0]
-  const snapshot = fresh_soruxgpt_snapshot ?? latest_snapshot
+  const snapshots = await database
+    .select({ values: sourceSnapshots.values, fetched_at: sourceSnapshots.fetched_at, mapper: usageSources.mapper })
+    .from(sourceSnapshots)
+    .innerJoin(usageSources, eq(sourceSnapshots.source_id, usageSources.id))
+    .where(inArray(usageSources.status, ['active', 'refreshing']))
+    .orderBy(desc(sourceSnapshots.fetched_at))
+    .limit(100)
+  const soruxgptSnapshot = snapshots.find((snapshot) => snapshot.mapper?.provider === 'soruxgpt_codex')
+  const freshSoruxgptSnapshot =
+    soruxgptSnapshot && Date.now() - soruxgptSnapshot.fetched_at.getTime() <= 30 * 60 * 1000 ? soruxgptSnapshot : null
+  const latestSnapshot = freshSoruxgptSnapshot ? undefined : snapshots[0]
+  const snapshot = freshSoruxgptSnapshot ?? latestSnapshot
 
-  return Promise.all(rows.map(async (row) => {
-    const [ota_job] = await database.select({ id: ota_jobs.id, status: ota_jobs.status }).from(ota_jobs).where(eq(ota_jobs.device_id, row.id)).orderBy(desc(ota_jobs.created_at)).limit(1)
-    return { ...row, source_values: snapshot?.values ?? null, ota_status: ota_job?.status ?? null, ota_job_id: ota_job?.id ?? null }
-  }))
+  return Promise.all(
+    rows.map(async (row) => {
+      const [otaJob] = await database
+        .select({ id: otaJobs.id, status: otaJobs.status })
+        .from(otaJobs)
+        .where(eq(otaJobs.device_id, row.id))
+        .orderBy(desc(otaJobs.created_at))
+        .limit(1)
+      return { ...row, source_values: snapshot?.values ?? null, ota_status: otaJob?.status ?? null, ota_job_id: otaJob?.id ?? null }
+    }),
+  )
 }
 
-export async function dashboard_summary() {
+export const dashboardSummary = async () => {
   if (!db) return { active_alerts: 0, source_updates_today: 0 }
-  const start_of_day = new Date()
-  start_of_day.setHours(0, 0, 0, 0)
+  const startOfDay = new Date()
+  startOfDay.setHours(0, 0, 0, 0)
   const [[active], [updates]] = await Promise.all([
-    db.select({ value: count() }).from(alert_rules).where(eq(alert_rules.active, true)),
-    db.select({ value: count() }).from(source_snapshots).where(gte(source_snapshots.fetched_at, start_of_day)),
+    db.select({ value: count() }).from(alertRules).where(eq(alertRules.active, true)),
+    db.select({ value: count() }).from(sourceSnapshots).where(gte(sourceSnapshots.fetched_at, startOfDay)),
   ])
   return { active_alerts: active?.value ?? 0, source_updates_today: updates?.value ?? 0 }
 }

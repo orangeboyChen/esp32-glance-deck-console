@@ -8,84 +8,84 @@ import { redirect } from 'next/navigation'
 import { db } from './db'
 import { administrators, sessions } from './schema'
 
-const session_cookie_name = 'glance_deck_session'
-const session_duration_ms = 1000 * 60 * 60 * 24 * 30
+const sessionCookieName = 'glance_deck_session'
+const sessionDurationMs = 1000 * 60 * 60 * 24 * 30
 
-export async function administrator_exists() {
+export const administratorExists = async () => {
   if (!db) return false
   const [administrator] = await db.select({ id: administrators.id }).from(administrators).limit(1)
   return Boolean(administrator)
 }
 
-export async function create_initial_administrator(email: string, password: string) {
+export const createInitialAdministrator = async (email: string, password: string) => {
   if (!db) throw new Error('database_unavailable')
-  const password_hash = await argon2.hash(password, { type: argon2.argon2id })
+  const passwordHash = await argon2.hash(password, { type: argon2.argon2id })
 
   return db.transaction(async (transaction) => {
-    const [existing_administrator] = await transaction.select({ id: administrators.id }).from(administrators).limit(1)
-    if (existing_administrator) throw new Error('administrator_exists')
+    const [existingAdministrator] = await transaction.select({ id: administrators.id }).from(administrators).limit(1)
+    if (existingAdministrator) throw new Error('administrator_exists')
 
-    const [administrator] = await transaction.insert(administrators).values({ email, password_hash }).returning()
+    const [administrator] = await transaction.insert(administrators).values({ email, password_hash: passwordHash }).returning()
     return administrator
   })
 }
 
-export async function authenticate_administrator(email: string, password: string) {
+export const authenticateAdministrator = async (email: string, password: string) => {
   if (!db) return undefined
   const [administrator] = await db.select().from(administrators).where(eq(administrators.email, email)).limit(1)
-  if (!administrator || !await argon2.verify(administrator.password_hash, password)) return undefined
+  if (!administrator || !(await argon2.verify(administrator.password_hash, password))) return undefined
   return administrator
 }
 
-export async function create_session(administrator_id: string) {
+export const createSession = async (administratorId: string) => {
   if (!db) throw new Error('database_unavailable')
-  const token_selector = randomBytes(12).toString('base64url')
-  const token_secret = randomBytes(32).toString('base64url')
-  const token_hash = await argon2.hash(token_secret, { type: argon2.argon2id })
-  const expires_at = new Date(Date.now() + session_duration_ms)
-  await db.insert(sessions).values({ administrator_id, token_selector, token_hash, expires_at })
+  const tokenSelector = randomBytes(12).toString('base64url')
+  const tokenSecret = randomBytes(32).toString('base64url')
+  const tokenHash = await argon2.hash(tokenSecret, { type: argon2.argon2id })
+  const expiresAt = new Date(Date.now() + sessionDurationMs)
+  await db
+    .insert(sessions)
+    .values({ administrator_id: administratorId, token_selector: tokenSelector, token_hash: tokenHash, expires_at: expiresAt })
 
-  const cookie_store = await cookies()
-  cookie_store.set(session_cookie_name, `${token_selector}.${token_secret}`, {
+  const cookieStore = await cookies()
+  cookieStore.set(sessionCookieName, `${tokenSelector}.${tokenSecret}`, {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
-    expires: expires_at,
+    expires: expiresAt,
     path: '/',
   })
 }
 
-export async function current_administrator() {
+export const currentAdministrator = async () => {
   if (!db) return undefined
-  const token = (await cookies()).get(session_cookie_name)?.value
+  const token = (await cookies()).get(sessionCookieName)?.value
   if (!token) return undefined
-  const [token_selector, token_secret] = token.split('.')
-  if (!token_selector || !token_secret || token.split('.').length !== 2) return undefined
+  const [tokenSelector, tokenSecret] = token.split('.')
+  if (!tokenSelector || !tokenSecret || token.split('.').length !== 2) return undefined
 
   const [candidate] = await db
     .select({ session_id: sessions.id, token_hash: sessions.token_hash, administrator: administrators })
     .from(sessions)
     .innerJoin(administrators, eq(sessions.administrator_id, administrators.id))
-    .where(and(eq(sessions.token_selector, token_selector), gt(sessions.expires_at, new Date())))
+    .where(and(eq(sessions.token_selector, tokenSelector), gt(sessions.expires_at, new Date())))
     .limit(1)
 
-  return candidate && await argon2.verify(candidate.token_hash, token_secret)
-    ? candidate.administrator
-    : undefined
+  return candidate && (await argon2.verify(candidate.token_hash, tokenSecret)) ? candidate.administrator : undefined
 }
 
-export async function clear_session() {
-  const cookie_store = await cookies()
-  const token = cookie_store.get(session_cookie_name)?.value
-  const [token_selector, token_secret, extra_part] = token?.split('.') ?? []
-  if (db && token_selector && token_secret && !extra_part) {
-    await db.delete(sessions).where(eq(sessions.token_selector, token_selector))
+export const clearSession = async () => {
+  const cookieStore = await cookies()
+  const token = cookieStore.get(sessionCookieName)?.value
+  const [tokenSelector, tokenSecret, extraPart] = token?.split('.') ?? []
+  if (db && tokenSelector && tokenSecret && !extraPart) {
+    await db.delete(sessions).where(eq(sessions.token_selector, tokenSelector))
   }
-  cookie_store.delete(session_cookie_name)
+  cookieStore.delete(sessionCookieName)
 }
 
-export async function require_page_administrator(locale: string) {
-  const administrator = await current_administrator()
+export const requirePageAdministrator = async (locale: string) => {
+  const administrator = await currentAdministrator()
   if (!administrator) redirect(`/${locale}/login`)
   return administrator
 }

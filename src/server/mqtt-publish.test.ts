@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import type { MqttClient } from 'mqtt'
 
-const publish = mock((_: string, __: string, ___: unknown, callback: (error?: Error) => void) => callback())
+const publish = mock((topic: string, payload: string, options: unknown, callback: (error?: Error) => void) => {
+  void topic
+  void payload
+  void options
+  callback()
+})
 
 describe('MQTT device publishing', () => {
   beforeEach(() => {
@@ -20,13 +25,49 @@ describe('MQTT device publishing', () => {
   test('publishes commands, OTA jobs, and retained bitmap releases', async () => {
     const mqtt = await import('./mqtt')
     const client = { publish } as unknown as MqttClient
-    await mqtt.publish_device_command('desk-1', { id: 'command-1', action: 'next_page', payload: {} }, client)
-    await mqtt.publish_device_ota('desk-1', { id: 'job-1', nonce: 'nonce', version: '1.0.0', manifest_url: 'https://releases.example/manifest.json', image_sha256: 'a'.repeat(64) }, client)
-    await mqtt.publish_device_ota_check_state('desk-1', { status: 'available', job_id: 'job-2', nonce: 'nonce-2', version: '1.1.0', manifest_url: 'https://releases.example/manifest.json', image_sha256: 'b'.repeat(64) }, client)
-    await mqtt.publish_device_release('desk-1', {
-      id: 'release-1', version: 1, active_page_id: 'usage',
-      pages: [{ page_id: 'usage', image_format: 'mono1-msb', image_width: 400, image_height: 300, image_sha256: 'b'.repeat(64), image_bytes: 15000 }],
-    }, client)
+    await mqtt.publishDeviceCommand('desk-1', { id: 'command-1', action: 'next_page', payload: {} }, client)
+    await mqtt.publishDeviceOta(
+      'desk-1',
+      {
+        id: 'job-1',
+        nonce: 'nonce',
+        version: '1.0.0',
+        manifest_url: 'https://releases.example/manifest.json',
+        image_sha256: 'a'.repeat(64),
+      },
+      client,
+    )
+    await mqtt.publishDeviceOtaCheckState(
+      'desk-1',
+      {
+        status: 'available',
+        job_id: 'job-2',
+        nonce: 'nonce-2',
+        version: '1.1.0',
+        manifest_url: 'https://releases.example/manifest.json',
+        image_sha256: 'b'.repeat(64),
+      },
+      client,
+    )
+    await mqtt.publishDeviceRelease(
+      'desk-1',
+      {
+        id: 'release-1',
+        version: 1,
+        active_page_id: 'usage',
+        pages: [
+          {
+            page_id: 'usage',
+            image_format: 'mono1-msb',
+            image_width: 400,
+            image_height: 300,
+            image_sha256: 'b'.repeat(64),
+            image_bytes: 15000,
+          },
+        ],
+      },
+      client,
+    )
 
     expect(publish).toHaveBeenCalledTimes(4)
     expect(publish.mock.calls[0]?.[0]).toBe('glance_deck/desk-1/command')

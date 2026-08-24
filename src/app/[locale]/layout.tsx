@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   description: 'ESP32 reflective display control plane',
 }
 
-export default async function locale_layout({ children, params }: Readonly<{ children: React.ReactNode; params: Promise<{ locale: string }> }>) {
+const localeLayout = async ({ children, params }: Readonly<{ children: React.ReactNode; params: Promise<{ locale: string }> }>) => {
   const { locale } = await params
   if (!hasLocale(routing.locales, locale)) notFound()
 
@@ -20,9 +20,13 @@ export default async function locale_layout({ children, params }: Readonly<{ chi
     <html lang={locale}>
       <body>
         <NextIntlClientProvider>
-          <Providers><ConsoleShell>{children}</ConsoleShell></Providers>
+          <Providers>
+            <ConsoleShell>{children}</ConsoleShell>
+          </Providers>
         </NextIntlClientProvider>
       </body>
     </html>
   )
 }
+
+export default localeLayout

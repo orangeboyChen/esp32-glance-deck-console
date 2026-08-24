@@ -1,24 +1,38 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test'
 
 const published = mock(async () => undefined)
-const select_results: unknown[][] = []
+const selectResults: unknown[][] = []
 const select = mock(() => ({
   from: () => ({
     where: () => ({
-      limit: async () => select_results.shift() ?? [],
-      then: (resolve: (value: unknown[]) => unknown) => Promise.resolve(select_results.shift() ?? []).then(resolve),
+      limit: async () => selectResults.shift() ?? [],
+      then: (resolve: (value: unknown[]) => unknown) => Promise.resolve(selectResults.shift() ?? []).then(resolve),
     }),
     orderBy: () => ({
-      limit: async () => select_results.shift() ?? [],
+      limit: async () => selectResults.shift() ?? [],
     }),
-    then: (resolve: (value: unknown[]) => unknown) => Promise.resolve(select_results.shift() ?? []).then(resolve),
+    then: (resolve: (value: unknown[]) => unknown) => Promise.resolve(selectResults.shift() ?? []).then(resolve),
   }),
 }))
 const transaction = mock(async (callback: (transaction: typeof database) => Promise<unknown>) => callback(database))
 const database = {
   select,
   transaction,
-  insert: () => ({ values: () => ({ returning: async () => [{ id: 'release-1', version: 4, page_id: 'usage', image_format: 'mono1-msb', image_width: 400, image_height: 300, content_sha256: 'a'.repeat(64) }] }) }),
+  insert: () => ({
+    values: () => ({
+      returning: async () => [
+        {
+          id: 'release-1',
+          version: 4,
+          page_id: 'usage',
+          image_format: 'mono1-msb',
+          image_width: 400,
+          image_height: 300,
+          content_sha256: 'a'.repeat(64),
+        },
+      ],
+    }),
+  }),
   update: () => ({ set: () => ({ where: async () => undefined }) }),
 }
 
@@ -27,13 +41,13 @@ mock.module('./db', () => ({
   database_url: 'postgresql://localhost/glance_deck',
   db: database,
 }))
-mock.module('./mqtt', () => ({ publish_device_release: published }))
+mock.module('./mqtt', () => ({ publishDeviceRelease: published }))
 
-const { publish_source_changes } = await import('./source-publisher')
+const { publishSourceChanges } = await import('./source-publisher')
 
 describe('source-bound display publication', () => {
   afterEach(() => {
-    select_results.length = 0
+    selectResults.length = 0
     select.mockClear()
     transaction.mockClear()
     published.mockClear()
@@ -42,13 +56,23 @@ describe('source-bound display publication', () => {
 
   test('creates a new bitmap release and publishes it to every assigned device', async () => {
     process.env.DEVICE_ASSET_URL = 'https://console.example'
-    select_results.push(
-      [{ source_id: 'source-1', page_id: 'usage', device_ids: ['desk-a', 'desk-b'], document_template: { title: '{{plan_name}}', lines: [{ label: 'Today', value: '{{used}}%' }] } }],
-      [{ id: 'desk-a', release_id: 'old-a' }, { id: 'desk-b', release_id: 'old-b' }],
+    selectResults.push(
+      [
+        {
+          source_id: 'source-1',
+          page_id: 'usage',
+          device_ids: ['desk-a', 'desk-b'],
+          document_template: { title: '{{plan_name}}', lines: [{ label: 'Today', value: '{{used}}%' }] },
+        },
+      ],
+      [
+        { id: 'desk-a', release_id: 'old-a' },
+        { id: 'desk-b', release_id: 'old-b' },
+      ],
       [],
       [{ version: 3 }],
     )
-    expect(await publish_source_changes('source-1', { plan_name: 'Pro', used: 72 })).toBe(2)
+    expect(await publishSourceChanges('source-1', { plan_name: 'Pro', used: 72 })).toBe(2)
     expect(transaction).toHaveBeenCalledTimes(1)
     expect(published).toHaveBeenCalledTimes(2)
     expect(published.mock.calls[0]?.[0]).toBe('desk-a')
@@ -57,21 +81,21 @@ describe('source-bound display publication', () => {
   })
 
   test('does not republish an unchanged release already assigned to all devices', async () => {
-    select_results.push(
+    selectResults.push(
       [{ source_id: 'source-1', page_id: 'usage', device_ids: ['desk-a'], document_template: { title: 'Fixed' } }],
       [{ id: 'desk-a', release_id: 'release-existing' }],
       [{ id: 'release-existing' }],
     )
-    expect(await publish_source_changes('source-1', {})).toBe(0)
+    expect(await publishSourceChanges('source-1', {})).toBe(0)
     expect(transaction).not.toHaveBeenCalled()
     expect(published).not.toHaveBeenCalled()
   })
 
   test('rejects a binding that references missing devices', async () => {
-    select_results.push(
+    selectResults.push(
       [{ source_id: 'source-1', page_id: 'usage', device_ids: ['desk-a', 'desk-missing'], document_template: { title: 'Fixed' } }],
       [{ id: 'desk-a', release_id: null }],
     )
-    await expect(publish_source_changes('source-1', {})).rejects.toThrow('display_binding_device_not_found')
+    await expect(publishSourceChanges('source-1', {})).rejects.toThrow('display_binding_device_not_found')
   })
 })

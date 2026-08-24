@@ -6,13 +6,13 @@ type DevicePreviewProps = {
   isSelected?: boolean
 }
 
-export function DevicePreview({ title, previewSvg, isSelected = false }: DevicePreviewProps) {
+export const DevicePreview = ({ title, previewSvg, isSelected = false }: DevicePreviewProps) => {
   const translate = useTranslations('Dashboard')
-  const display_preview = translate('displayPreview', { title })
+  const displayPreview = translate('displayPreview', { title })
   if (previewSvg) {
     return (
       <img
-        alt={display_preview}
+        alt={displayPreview}
         className="device-preview image-preview"
         data-selected={isSelected || undefined}
         src={`data:image/svg+xml;base64,${Buffer.from(previewSvg).toString('base64')}`}
@@ -21,7 +21,7 @@ export function DevicePreview({ title, previewSvg, isSelected = false }: DeviceP
   }
 
   return (
-    <div className="device-preview" data-selected={isSelected || undefined} role="img" aria-label={display_preview}>
+    <div className="device-preview" data-selected={isSelected || undefined} role="img" aria-label={displayPreview}>
       <div className="preview-header">
         <span>{translate('unpublished')}</span>
         <span>1 / 4</span>

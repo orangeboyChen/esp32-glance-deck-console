@@ -1,0 +1,6 @@
+.next
+coverage
+drizzle
+node_modules
+assets
+*.lock
