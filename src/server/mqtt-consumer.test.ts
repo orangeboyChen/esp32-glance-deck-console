@@ -8,7 +8,11 @@ const set = mock((value: Record<string, unknown>) => {
 })
 const update = mock(() => ({ set }))
 
-mock.module('./db', () => ({ db: { update } }))
+mock.module('./db', () => ({
+  database_dialect: 'postgresql',
+  database_url: 'postgresql://localhost/glance_deck',
+  db: { update },
+}))
 
 const { consume_device_state, consume_ota_state } = await import('./mqtt')
 const { consume_ota_check } = await import('./mqtt')

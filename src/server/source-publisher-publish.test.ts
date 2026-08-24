@@ -22,7 +22,11 @@ const database = {
   update: () => ({ set: () => ({ where: async () => undefined }) }),
 }
 
-mock.module('./db', () => ({ db: database }))
+mock.module('./db', () => ({
+  database_dialect: 'postgresql',
+  database_url: 'postgresql://localhost/glance_deck',
+  db: database,
+}))
 mock.module('./mqtt', () => ({ publish_device_release: published }))
 
 const { publish_source_changes } = await import('./source-publisher')
