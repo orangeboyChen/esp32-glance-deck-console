@@ -17,7 +17,12 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: '1.3.14'
-      - run: bun install --frozen-lockfile
+      - name: Install locked dependencies
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        run: bun install --frozen-lockfile
+      - name: Install Dependabot dependencies
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+        run: bun install --no-save
       - run: bun run test:coverage
       - run: bun run build
       - run: docker compose config --quiet
