@@ -7,7 +7,9 @@ export type AlertValue = string | number | null
 export type AlertOperator = 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'neq' | 'contains'
 
 const numeric = (value: AlertValue) => {
-  if (typeof value === 'number') return value
+  if (typeof value === 'number') {
+    return value
+  }
   if (typeof value === 'string' && value.trim() !== '') {
     const parsed = Number(value)
     return Number.isFinite(parsed) ? parsed : null
@@ -16,7 +18,9 @@ const numeric = (value: AlertValue) => {
 }
 
 export const matchesAlert = (value: AlertValue, operator: AlertOperator, threshold: string) => {
-  if (operator === 'contains') return typeof value === 'string' && value.toLowerCase().includes(threshold.toLowerCase())
+  if (operator === 'contains') {
+    return typeof value === 'string' && value.toLowerCase().includes(threshold.toLowerCase())
+  }
   if (operator === 'eq' || operator === 'neq') {
     const leftNumber = numeric(value)
     const rightNumber = numeric(threshold)
@@ -25,15 +29,25 @@ export const matchesAlert = (value: AlertValue, operator: AlertOperator, thresho
   }
   const left = numeric(value)
   const right = numeric(threshold)
-  if (left === null || right === null) return false
-  if (operator === 'gt') return left > right
-  if (operator === 'gte') return left >= right
-  if (operator === 'lt') return left < right
+  if (left === null || right === null) {
+    return false
+  }
+  if (operator === 'gt') {
+    return left > right
+  }
+  if (operator === 'gte') {
+    return left >= right
+  }
+  if (operator === 'lt') {
+    return left < right
+  }
   return left <= right
 }
 
 export const evaluateAlertRules = async (sourceId: string, values: Record<string, AlertValue>) => {
-  if (!db) throw new Error('database_unavailable')
+  if (!db) {
+    throw new Error('database_unavailable')
+  }
   const rules = await db
     .select()
     .from(alertRules)

@@ -4,7 +4,9 @@ const assetTtlSeconds = 60 * 60
 
 const assetKey = () => {
   const key = process.env.DEVICE_ASSET_SIGNING_KEY
-  if (!key) throw new Error('device_asset_signing_key_missing')
+  if (!key) {
+    throw new Error('device_asset_signing_key_missing')
+  }
   return key
 }
 
@@ -31,9 +33,13 @@ export const verifyReleasePageImageSignature = (
   expiresAt: string | null,
   providedSignature: string | null,
 ) => {
-  if (!expiresAt || !providedSignature || !/^\d+$/.test(expiresAt)) return false
+  if (!expiresAt || !providedSignature || !/^\d+$/.test(expiresAt)) {
+    return false
+  }
   const expires = Number(expiresAt)
-  if (!Number.isSafeInteger(expires) || expires < Math.floor(Date.now() / 1000)) return false
+  if (!Number.isSafeInteger(expires) || expires < Math.floor(Date.now() / 1000)) {
+    return false
+  }
   const expected = Buffer.from(signature(releaseId, pageId, expires))
   const actual = Buffer.from(providedSignature)
   return expected.length === actual.length && timingSafeEqual(expected, actual)

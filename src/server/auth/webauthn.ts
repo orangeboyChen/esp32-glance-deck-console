@@ -15,7 +15,9 @@ const rpName = 'ESP32 Glance Deck'
 const origin = process.env.APP_URL ?? 'http://localhost:3000'
 
 export const beginPasskeyRegistration = async (administrator: { id: string; email: string }) => {
-  if (!db) throw new Error('database_unavailable')
+  if (!db) {
+    throw new Error('database_unavailable')
+  }
   const existing = await db.select().from(passkeys).where(eq(passkeys.administrator_id, administrator.id))
   const options = await generateRegistrationOptions({
     rpName: rpName,
@@ -39,7 +41,9 @@ export const beginPasskeyRegistration = async (administrator: { id: string; emai
 }
 
 export const finishPasskeyRegistration = async (administratorId: string, response: RegistrationResponseJSON) => {
-  if (!db) throw new Error('database_unavailable')
+  if (!db) {
+    throw new Error('database_unavailable')
+  }
   const [challenge] = await db
     .select()
     .from(webauthnChallenges)
@@ -52,7 +56,9 @@ export const finishPasskeyRegistration = async (administratorId: string, respons
     )
     .orderBy(webauthnChallenges.created_at)
     .limit(1)
-  if (!challenge) throw new Error('challenge_expired')
+  if (!challenge) {
+    throw new Error('challenge_expired')
+  }
 
   const verification = await verifyRegistrationResponse({
     response,
@@ -60,7 +66,9 @@ export const finishPasskeyRegistration = async (administratorId: string, respons
     expectedOrigin: origin,
     expectedRPID: rpId,
   })
-  if (!verification.verified || !verification.registrationInfo) throw new Error('registration_not_verified')
+  if (!verification.verified || !verification.registrationInfo) {
+    throw new Error('registration_not_verified')
+  }
 
   const { credential } = verification.registrationInfo
   await db.insert(passkeys).values({
@@ -75,7 +83,9 @@ export const finishPasskeyRegistration = async (administratorId: string, respons
 }
 
 export const beginPasskeyAuthentication = async () => {
-  if (!db) throw new Error('database_unavailable')
+  if (!db) {
+    throw new Error('database_unavailable')
+  }
   const options = await generateAuthenticationOptions({ rpID: rpId, userVerification: 'preferred' })
   await db.insert(webauthnChallenges).values({
     administrator_id: null,
@@ -87,9 +97,13 @@ export const beginPasskeyAuthentication = async () => {
 }
 
 export const finishPasskeyAuthentication = async (response: AuthenticationResponseJSON) => {
-  if (!db) throw new Error('database_unavailable')
+  if (!db) {
+    throw new Error('database_unavailable')
+  }
   const [credential] = await db.select().from(passkeys).where(eq(passkeys.credential_id, response.id)).limit(1)
-  if (!credential) throw new Error('credential_not_found')
+  if (!credential) {
+    throw new Error('credential_not_found')
+  }
 
   const [challenge] = await db
     .select()
@@ -97,7 +111,9 @@ export const finishPasskeyAuthentication = async (response: AuthenticationRespon
     .where(and(eq(webauthnChallenges.purpose, 'authentication'), gt(webauthnChallenges.expires_at, new Date())))
     .orderBy(webauthnChallenges.created_at)
     .limit(1)
-  if (!challenge) throw new Error('challenge_expired')
+  if (!challenge) {
+    throw new Error('challenge_expired')
+  }
 
   const verification = await verifyAuthenticationResponse({
     response,
@@ -111,7 +127,9 @@ export const finishPasskeyAuthentication = async (response: AuthenticationRespon
       transports: (credential.transports as AuthenticatorTransportFuture[] | null) ?? undefined,
     },
   })
-  if (!verification.verified) throw new Error('authentication_not_verified')
+  if (!verification.verified) {
+    throw new Error('authentication_not_verified')
+  }
 
   await db.transaction(async (transaction) => {
     await transaction.update(passkeys).set({ counter: verification.authenticationInfo.newCounter }).where(eq(passkeys.id, credential.id))

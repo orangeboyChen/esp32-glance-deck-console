@@ -18,21 +18,29 @@ type MappedValue = string | number | null
 
 const jsonPath = (value: unknown, selector: string): MappedValue => {
   const parts = /^\$((?:\.[A-Za-z_][A-Za-z0-9_]*)|(?:\[\d+\]))*$/.exec(selector)
-  if (!parts) throw new Error('mapper_jsonpath_invalid')
+  if (!parts) {
+    throw new Error('mapper_jsonpath_invalid')
+  }
   let current: unknown = value
   for (const match of selector.matchAll(/\.([A-Za-z_][A-Za-z0-9_]*)|\[(\d+)\]/g)) {
-    if (match[1])
+    if (match[1]) {
       current =
         current && typeof current === 'object' && !Array.isArray(current) ? (current as Record<string, unknown>)[match[1]] : undefined
-    else current = Array.isArray(current) ? current[Number(match[2])] : undefined
+    } else {
+      current = Array.isArray(current) ? current[Number(match[2])] : undefined
+    }
   }
-  if (current === null || typeof current === 'string' || typeof current === 'number') return current
+  if (current === null || typeof current === 'string' || typeof current === 'number') {
+    return current
+  }
   return null
 }
 
 const interpolate = (template: string, secrets: Record<string, string>) => {
   return template.replace(/\{\{([A-Za-z][A-Za-z0-9_]*)\}\}/g, (match, key: string) => {
-    if (!(key in secrets)) throw new Error(`secret_template_missing:${key}`)
+    if (!(key in secrets)) {
+      throw new Error(`secret_template_missing:${key}`)
+    }
     return secrets[key]
   })
 }
@@ -81,7 +89,9 @@ type SafeSourceUrl = {
 const safeUrl = async (baseUrl: string, requestPath: string): Promise<SafeSourceUrl> => {
   const url = new URL(requestPath, baseUrl)
   const localDev = process.env.NODE_ENV !== 'production' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1')
-  if (url.protocol !== 'https:' && !localDev) throw new Error('source_https_required')
+  if (url.protocol !== 'https:' && !localDev) {
+    throw new Error('source_https_required')
+  }
   const allowedHosts = (process.env.SOURCE_ALLOWED_HOSTS ?? '')
     .split(',')
     .map((host) => host.trim().toLowerCase())
@@ -91,12 +101,17 @@ const safeUrl = async (baseUrl: string, requestPath: string): Promise<SafeSource
   }
   if (!localDev) {
     const resolved = await lookup(url.hostname, { all: true })
-    if (resolved.length === 0 || resolved.some(({ address }) => isPrivateAddress(address)))
+    if (resolved.length === 0 || resolved.some(({ address }) => isPrivateAddress(address))) {
       throw new Error('source_private_address_blocked')
+    }
     const target = resolved[0]
-    if (!target) throw new Error('source_address_unavailable')
+    if (!target) {
+      throw new Error('source_address_unavailable')
+    }
     const family = isIP(target.address)
-    if (family !== 4 && family !== 6) throw new Error('source_address_invalid')
+    if (family !== 4 && family !== 6) {
+      throw new Error('source_address_invalid')
+    }
     return { url, address: target.address, family }
   }
   return { url }
@@ -111,7 +126,9 @@ const fetchSource = async (sourceUrl: SafeSourceUrl, method: string, headers: Re
   return new Promise<{ status: number; content_type: string; raw: string }>((resolve, reject) => {
     const targetAddress = sourceUrl.address
     const targetFamily = sourceUrl.family
-    if (!targetAddress || !targetFamily) throw new Error('source_address_unavailable')
+    if (!targetAddress || !targetFamily) {
+      throw new Error('source_address_unavailable')
+    }
     const request = httpsRequest(
       {
         protocol: sourceUrl.url.protocol,
@@ -128,8 +145,11 @@ const fetchSource = async (sourceUrl: SafeSourceUrl, method: string, headers: Re
         let size = 0
         response.on('data', (chunk: Buffer) => {
           size += chunk.length
-          if (size > MAX_RESPONSE_BYTES) request.destroy(new Error('source_response_too_large'))
-          else chunks.push(chunk)
+          if (size > MAX_RESPONSE_BYTES) {
+            request.destroy(new Error('source_response_too_large'))
+          } else {
+            chunks.push(chunk)
+          }
         })
         response.on('end', () =>
           resolve({
@@ -147,7 +167,9 @@ const fetchSource = async (sourceUrl: SafeSourceUrl, method: string, headers: Re
 }
 
 export const refreshUsageSource = async (sourceId: string, alreadyClaimed = false) => {
-  if (!db) throw new Error('database_unavailable')
+  if (!db) {
+    throw new Error('database_unavailable')
+  }
   if (!alreadyClaimed) {
     const staleClaimBefore = new Date(Date.now() - 30 * 60 * 1000)
     const [claimed] = await db
@@ -163,10 +185,14 @@ export const refreshUsageSource = async (sourceId: string, alreadyClaimed = fals
         ),
       )
       .returning({ id: usageSources.id })
-    if (!claimed) throw new Error('source_refresh_in_progress')
+    if (!claimed) {
+      throw new Error('source_refresh_in_progress')
+    }
   }
   const [source] = await db.select().from(usageSources).where(eq(usageSources.id, sourceId)).limit(1)
-  if (!source) throw new Error('source_not_found')
+  if (!source) {
+    throw new Error('source_not_found')
+  }
   try {
     const secrets = decryptSecret(source.secret_ciphertext)
     const sourceUrl = await safeUrl(source.base_url, source.request_path)
@@ -175,8 +201,12 @@ export const refreshUsageSource = async (sourceId: string, alreadyClaimed = fals
     )
     const body = source.body_template ? interpolate(source.body_template, secrets) : undefined
     const response = await fetchSource(sourceUrl, source.method, headers, body)
-    if (response.status < 200 || response.status >= 300) throw new Error(`source_http_${response.status}`)
-    if (!response.content_type.includes('json')) throw new Error('source_content_type_invalid')
+    if (response.status < 200 || response.status >= 300) {
+      throw new Error(`source_http_${response.status}`)
+    }
+    if (!response.content_type.includes('json')) {
+      throw new Error('source_content_type_invalid')
+    }
     const raw = response.raw
     const parsed: unknown = JSON.parse(raw)
     const values =
@@ -209,7 +239,9 @@ export const refreshUsageSource = async (sourceId: string, alreadyClaimed = fals
         .set({ status: 'active', last_success_at: new Date(), last_error: null })
         .where(eq(usageSources.id, sourceId))
     })
-    if (changed) await publishSourceChanges(sourceId, persistedValues)
+    if (changed) {
+      await publishSourceChanges(sourceId, persistedValues)
+    }
     await evaluateAlertRules(sourceId, persistedValues)
     return persistedValues
   } catch (error) {

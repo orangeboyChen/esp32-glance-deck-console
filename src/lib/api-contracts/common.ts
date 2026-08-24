@@ -1,0 +1,10 @@
+export type JsonPrimitive = boolean | number | string | null
+export type JsonValue = JsonPrimitive | JsonObject | JsonValue[]
+export type JsonObject = { [key: string]: JsonValue }
+export type ApiErrorResponse = { error: string; issues?: JsonValue[] }
+export type HealthResponse = { status: 'ok'; service: 'glance-deck-console' }
+export type LocaleRequest = { locale: string }
+export type LocaleResponse = { locale: string }
+export type ValuesResponse = { values: JsonObject }
+export type EventReadyPayload = { status: 'connected' }
+export type SvgResponse = string

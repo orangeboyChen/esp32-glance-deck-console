@@ -4,10 +4,15 @@ import { desc, eq } from 'drizzle-orm'
 import { requireApiScope } from '@/server/auth/auth'
 import { db } from '@/server/database/db'
 import { deviceCommands, devices, displayReleases } from '@/server/database/schema'
+import type { DeviceDetailResponse } from '@/lib/api-contracts'
 
 export const GET = async (request: Request, { params }: { params: Promise<{ device_id: string }> }) => {
-  if (!(await requireApiScope(request, 'devices:read'))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  if (!db) return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
+  if (!(await requireApiScope(request, 'devices:read'))) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+  if (!db) {
+    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
+  }
   const { device_id: deviceId } = await params
   const [device] = await db
     .select({
@@ -33,12 +38,27 @@ export const GET = async (request: Request, { params }: { params: Promise<{ devi
     .leftJoin(displayReleases, eq(devices.release_id, displayReleases.id))
     .where(eq(devices.id, deviceId))
     .limit(1)
-  if (!device) return NextResponse.json({ error: 'device_not_found' }, { status: 404 })
+  if (!device) {
+    return NextResponse.json({ error: 'device_not_found' }, { status: 404 })
+  }
   const commands = await db
     .select()
     .from(deviceCommands)
     .where(eq(deviceCommands.device_id, deviceId))
     .orderBy(desc(deviceCommands.created_at))
     .limit(20)
-  return NextResponse.json({ device, commands })
+  const response: DeviceDetailResponse = {
+    device: {
+      ...device,
+      power_updated_at: device.power_updated_at?.toISOString() ?? null,
+      last_seen_at: device.last_seen_at?.toISOString() ?? null,
+    },
+    commands: commands.map((command) => ({
+      ...command,
+      payload: command.payload as DeviceDetailResponse['commands'][number]['payload'],
+      created_at: command.created_at.toISOString(),
+      confirmed_at: command.confirmed_at?.toISOString() ?? null,
+    })),
+  }
+  return NextResponse.json(response)
 }

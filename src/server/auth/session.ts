@@ -12,18 +12,24 @@ const sessionCookieName = '__Host-glance_deck_session'
 const sessionDurationMs = 1000 * 60 * 60 * 24 * 30
 
 export const administratorExists = async () => {
-  if (!db) return false
+  if (!db) {
+    return false
+  }
   const [administrator] = await db.select({ id: administrators.id }).from(administrators).limit(1)
   return Boolean(administrator)
 }
 
 export const createInitialAdministrator = async (email: string, password: string) => {
-  if (!db) throw new Error('database_unavailable')
+  if (!db) {
+    throw new Error('database_unavailable')
+  }
   const passwordHash = await argon2.hash(password, { type: argon2.argon2id })
 
   return db.transaction(async (transaction) => {
     const [existingAdministrator] = await transaction.select({ id: administrators.id }).from(administrators).limit(1)
-    if (existingAdministrator) throw new Error('administrator_exists')
+    if (existingAdministrator) {
+      throw new Error('administrator_exists')
+    }
 
     const [administrator] = await transaction.insert(administrators).values({ email, password_hash: passwordHash }).returning()
     return administrator
@@ -31,14 +37,20 @@ export const createInitialAdministrator = async (email: string, password: string
 }
 
 export const authenticateAdministrator = async (email: string, password: string) => {
-  if (!db) return undefined
+  if (!db) {
+    return undefined
+  }
   const [administrator] = await db.select().from(administrators).where(eq(administrators.email, email)).limit(1)
-  if (!administrator || !(await argon2.verify(administrator.password_hash, password))) return undefined
+  if (!administrator || !(await argon2.verify(administrator.password_hash, password))) {
+    return undefined
+  }
   return administrator
 }
 
 export const createSession = async (administratorId: string) => {
-  if (!db) throw new Error('database_unavailable')
+  if (!db) {
+    throw new Error('database_unavailable')
+  }
   const tokenSelector = randomBytes(12).toString('base64url')
   const tokenSecret = randomBytes(32).toString('base64url')
   const tokenHash = await argon2.hash(tokenSecret, { type: argon2.argon2id })
@@ -58,11 +70,17 @@ export const createSession = async (administratorId: string) => {
 }
 
 export const currentAdministrator = async () => {
-  if (!db) return undefined
+  if (!db) {
+    return undefined
+  }
   const token = (await cookies()).get(sessionCookieName)?.value
-  if (!token) return undefined
+  if (!token) {
+    return undefined
+  }
   const [tokenSelector, tokenSecret] = token.split('.')
-  if (!tokenSelector || !tokenSecret || token.split('.').length !== 2) return undefined
+  if (!tokenSelector || !tokenSecret || token.split('.').length !== 2) {
+    return undefined
+  }
 
   const [candidate] = await db
     .select({ session_id: sessions.id, token_hash: sessions.token_hash, administrator: administrators })
@@ -86,6 +104,8 @@ export const clearSession = async () => {
 
 export const requirePageAdministrator = async () => {
   const administrator = await currentAdministrator()
-  if (!administrator) redirect('/login')
+  if (!administrator) {
+    redirect('/login')
+  }
   return administrator
 }

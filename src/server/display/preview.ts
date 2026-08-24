@@ -66,14 +66,18 @@ export const renderDisplayPreview = (document: DisplayDocument) => {
 
 const renderIcon = (icon: DisplayIcon, x: number, y: number) => {
   const stroke = 'stroke="#26322a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"'
-  if (icon === 'wifi')
+  if (icon === 'wifi') {
     return `<g transform="translate(${x} ${y})" ${stroke}><path d="M2 12 Q20 -3 38 12"/><path d="M9 20 Q20 10 31 20"/><circle cx="20" cy="28" r="2" fill="#26322a"/></g>`
-  if (icon === 'battery')
+  }
+  if (icon === 'battery') {
     return `<g transform="translate(${x} ${y})" ${stroke}><rect x="2" y="8" width="30" height="18" rx="2"/><path d="M35 14v6"/><path d="M7 13h12v8H7z" fill="#26322a"/></g>`
-  if (icon === 'system')
+  }
+  if (icon === 'system') {
     return `<g transform="translate(${x} ${y})" ${stroke}><rect x="4" y="4" width="32" height="24" rx="2"/><path d="M12 35h16M20 28v7"/></g>`
-  if (icon === 'home')
+  }
+  if (icon === 'home') {
     return `<g transform="translate(${x} ${y})" ${stroke}><path d="m4 19 16-14 16 14v16H4z"/><path d="M16 35V23h8v12"/></g>`
+  }
   return `<g transform="translate(${x} ${y})" ${stroke}><path d="m3 25 8-8 5 5 13-13"/><path d="M19 6h10v10"/></g>`
 }
 
@@ -133,7 +137,9 @@ export const renderDeviceBitmap = (document: DisplayDocument): RenderedDisplay =
     const offset = pixel * 4
     const luminance = (pixels[offset] * 299 + pixels[offset + 1] * 587 + pixels[offset + 2] * 114) / 1000
     const opaque = pixels[offset + 3] > 127
-    if (opaque && luminance < 160) deviceImage[pixel >> 3] |= 0x80 >> (pixel & 7)
+    if (opaque && luminance < 160) {
+      deviceImage[pixel >> 3] |= 0x80 >> (pixel & 7)
+    }
   }
   return { preview_svg: previewSvg, device_image: deviceImage }
 }

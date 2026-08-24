@@ -9,6 +9,8 @@ import { useCallback, useEffect } from 'react'
 
 import { ConsolePageHeader } from '@/app/_components/console-page-header'
 import { Api } from '@/lib/api-client'
+import type { JsonObject } from '@/lib/api-contracts'
+import { toAuthenticatorTransports } from '@/lib/passkey'
 
 import {
   settingsErrorAtom,
@@ -22,8 +24,6 @@ import {
   tokenLabelAtom,
   tokenScopesAtom,
   type ApiToken,
-  type NewToken,
-  type Passkey,
 } from '@/app/settings/_components/state'
 
 const toBase64url = (value: ArrayBuffer) => {
@@ -52,8 +52,8 @@ const serialiseCredential = (credential: Credential) => {
       attestationObject: toBase64url(response.attestationObject),
       transports: response.getTransports?.(),
     },
-    type: publicKey.type,
-    clientExtensionResults: publicKey.getClientExtensionResults(),
+    type: 'public-key' as const,
+    clientExtensionResults: publicKey.getClientExtensionResults() as JsonObject,
   }
 }
 
@@ -75,9 +75,8 @@ export const SettingsManager = () => {
     setError(null)
     try {
       const [tokenResponse, passkeyResponse] = await Promise.all([Api.listTokens(), Api.listPasskeys()])
-      if (!tokenResponse.ok || !passkeyResponse.ok) throw new Error('loadFailed')
-      setTokens(((await tokenResponse.json()) as { tokens: ApiToken[] }).tokens)
-      setPasskeys(((await passkeyResponse.json()) as { passkeys: Passkey[] }).passkeys)
+      setTokens(tokenResponse.tokens)
+      setPasskeys(passkeyResponse.passkeys)
     } catch {
       setError(translate('loadFailed'))
     } finally {
@@ -89,13 +88,13 @@ export const SettingsManager = () => {
   }, [load])
 
   const createToken = async () => {
-    if (!label.trim() || scopes.length === 0) return
+    if (!label.trim() || scopes.length === 0) {
+      return
+    }
     setSaving(true)
     try {
       const response = await Api.createToken({ label: label.trim(), scopes })
-      const payload = (await response.json()) as NewToken | { error?: string }
-      if (!response.ok || !('token' in payload)) throw new Error('tokenCreateFailed')
-      setNewToken(payload)
+      setNewToken(response)
       setLabel('Home Assistant')
       await load()
       toast.success(translate('tokenCreated'))
@@ -107,8 +106,7 @@ export const SettingsManager = () => {
   }
   const revokeToken = async (token: ApiToken) => {
     try {
-      const response = await Api.deleteToken(token.id)
-      if (!response.ok) throw new Error()
+      await Api.deleteToken(token.id)
       setTokens((current) => current.filter((item) => item.id !== token.id))
       toast.success(translate('tokenRevoked'))
     } catch {
@@ -118,25 +116,26 @@ export const SettingsManager = () => {
   const registerPasskey = async () => {
     setPasskeyBusy(true)
     try {
-      if (!window.PublicKeyCredential) throw new Error('passkeyUnsupported')
-      const optionsResponse = await Api.registerPasskeyOptions()
-      if (!optionsResponse.ok) throw new Error('passkeyRegisterFailed')
-      const options = (await optionsResponse.json()) as PublicKeyCredentialCreationOptions & {
-        challenge: string
-        user: PublicKeyCredentialUserEntity
-        excludeCredentials?: PublicKeyCredentialDescriptor[]
+      if (!window.PublicKeyCredential) {
+        throw new Error('passkeyUnsupported')
       }
+      const options = await Api.registerPasskeyOptions()
       const credential = await navigator.credentials.create({
         publicKey: {
           ...options,
           challenge: fromBase64url(options.challenge),
           user: { ...options.user, id: fromBase64url(options.user.id as unknown as string) },
-          excludeCredentials: options.excludeCredentials?.map((item) => ({ ...item, id: fromBase64url(item.id as unknown as string) })),
+          excludeCredentials: options.excludeCredentials?.map((item) => ({
+            ...item,
+            id: fromBase64url(item.id as unknown as string),
+            transports: toAuthenticatorTransports(item.transports),
+          })),
         },
       })
-      if (!credential) throw new Error('passkeyRegisterFailed')
-      const verifyResponse = await Api.registerPasskeyVerify(serialiseCredential(credential))
-      if (!verifyResponse.ok) throw new Error('passkeyRegisterFailed')
+      if (!credential) {
+        throw new Error('passkeyRegisterFailed')
+      }
+      await Api.registerPasskeyVerify(serialiseCredential(credential))
       toast.success(translate('passkeyAdded'))
       await load()
     } catch (registrationError) {
@@ -147,11 +146,12 @@ export const SettingsManager = () => {
     }
   }
   const deletePasskey = async () => {
-    if (!removePasskey) return
+    if (!removePasskey) {
+      return
+    }
     setPasskeyBusy(true)
     try {
-      const response = await Api.deletePasskey(removePasskey.id)
-      if (!response.ok) throw new Error()
+      await Api.deletePasskey(removePasskey.id)
       setPasskeys((current) => current.filter((item) => item.id !== removePasskey.id))
       setRemovePasskey(null)
       toast.success(translate('passkeyRemoved'))

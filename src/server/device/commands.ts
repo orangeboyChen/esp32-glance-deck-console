@@ -5,7 +5,9 @@ import { publishDeviceCommand } from '@/server/messaging/mqtt'
 import { deviceCommands } from '@/server/database/schema'
 
 export const dispatchQueuedCommands = async () => {
-  if (!db) return 0
+  if (!db) {
+    return 0
+  }
   let dispatched = 0
   for (let index = 0; index < 20; index += 1) {
     const processed = await db.transaction(async (transaction) => {
@@ -19,7 +21,9 @@ export const dispatchQueuedCommands = async () => {
       type LockableQuery = { for: (mode: 'update', options: { skipLocked: true }) => Promise<QueryResult> }
       const [command] =
         databaseDialect === 'postgresql' ? await (query as unknown as LockableQuery).for('update', { skipLocked: true }) : await query
-      if (!command) return false
+      if (!command) {
+        return false
+      }
 
       try {
         await publishDeviceCommand(command.device_id, command)
@@ -38,7 +42,9 @@ export const dispatchQueuedCommands = async () => {
       }
       return true
     })
-    if (!processed) break
+    if (!processed) {
+      break
+    }
     dispatched += 1
   }
   return dispatched

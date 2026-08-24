@@ -1,21 +1,20 @@
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
-
 import { announceEnrollment } from '@/server/device/enrollment'
-
-const enrollmentSchema = z.object({
-  pairing_code: z.string().regex(/^\d{6}$/),
-  claim_secret: z.string().regex(/^[a-f0-9]{64}$/),
-  board_model: z.literal('ESP32-S3-RLCD-4.2'),
-})
+import { enrollmentAnnounceRequestSchema } from '@/lib/api-contracts'
+import type { EnrollmentAnnounceResponse } from '@/lib/api-contracts'
 
 export const POST = async (request: Request) => {
-  const body = enrollmentSchema.safeParse(await request.json())
-  if (!body.success) return NextResponse.json({ error: 'invalid_enrollment_request' }, { status: 400 })
+  const body = enrollmentAnnounceRequestSchema.safeParse(await request.json())
+  if (!body.success) {
+    return NextResponse.json({ error: 'invalid_enrollment_request' }, { status: 400 })
+  }
   try {
-    return NextResponse.json(await announceEnrollment(body.data.pairing_code, body.data.claim_secret, body.data.board_model), {
-      status: 201,
-    })
+    const result = await announceEnrollment(body.data.pairing_code, body.data.claim_secret, body.data.board_model)
+    const response: EnrollmentAnnounceResponse = {
+      expires_at: result.expires_at.toISOString(),
+      status: result.status as EnrollmentAnnounceResponse['status'],
+    }
+    return NextResponse.json(response, { status: 201 })
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'enrollment_request_failed' }, { status: 409 })
   }

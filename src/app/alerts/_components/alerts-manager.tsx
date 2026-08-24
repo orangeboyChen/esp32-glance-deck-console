@@ -29,10 +29,7 @@ import {
   alertsLoadingAtom,
   alertsSavingAtom,
   alertsSourcesAtom,
-  type AlertRule,
-  type Device,
   type Operator,
-  type Source,
 } from '@/app/alerts/_components/state'
 
 export const AlertsManager = () => {
@@ -58,10 +55,9 @@ export const AlertsManager = () => {
     setLoading(true)
     try {
       const [alertsResponse, sourcesResponse, devicesResponse] = await Promise.all([Api.listAlerts(), Api.listSources(), Api.listDevices()])
-      if (!alertsResponse.ok || !sourcesResponse.ok || !devicesResponse.ok) throw new Error('load_failed')
-      setAlerts(((await alertsResponse.json()) as { rules: AlertRule[] }).rules)
-      setSources(((await sourcesResponse.json()) as { sources: Source[] }).sources)
-      setDevices(((await devicesResponse.json()) as { devices: Device[] }).devices)
+      setAlerts(alertsResponse.rules)
+      setSources(sourcesResponse.sources)
+      setDevices(devicesResponse.devices)
     } catch {
       setError(translate('loadFailed'))
     } finally {
@@ -84,7 +80,7 @@ export const AlertsManager = () => {
     setError(null)
     setSaving(true)
     try {
-      const response = await Api.createAlert({
+      await Api.createAlert({
         name: name.trim(),
         source_id: sourceId,
         field,
@@ -100,8 +96,6 @@ export const AlertsManager = () => {
         test_only: testOnly,
         enabled: true,
       })
-      const payload = (await response.json()) as { error?: string }
-      if (!response.ok) throw new Error(payload.error || 'save_failed')
       toast.success(translate('savedToast'))
       setName('')
       setMessage('')
@@ -116,8 +110,9 @@ export const AlertsManager = () => {
   }
 
   const remove = async (id: string) => {
-    const response = await Api.deleteAlert(id)
-    if (!response.ok) {
+    try {
+      await Api.deleteAlert(id)
+    } catch {
       toast.error(translate('deleteFailed'))
       return
     }

@@ -4,9 +4,13 @@ const algorithm = 'aes-256-gcm'
 
 const encryptionKey = () => {
   const encoded = process.env.APP_MASTER_KEY
-  if (!encoded) throw new Error('app_master_key_missing')
+  if (!encoded) {
+    throw new Error('app_master_key_missing')
+  }
   const key = Buffer.from(encoded, 'base64url')
-  if (key.length !== 32) throw new Error('app_master_key_invalid')
+  if (key.length !== 32) {
+    throw new Error('app_master_key_invalid')
+  }
   return key
 }
 
@@ -19,7 +23,9 @@ export const encryptSecret = (value: Record<string, string>) => {
 
 export const decryptSecret = (value: string): Record<string, string> => {
   const [ivEncoded, tagEncoded, contentEncoded] = value.split('.')
-  if (!ivEncoded || !tagEncoded || !contentEncoded) throw new Error('secret_ciphertext_invalid')
+  if (!ivEncoded || !tagEncoded || !contentEncoded) {
+    throw new Error('secret_ciphertext_invalid')
+  }
   const decipher = createDecipheriv(algorithm, encryptionKey(), Buffer.from(ivEncoded, 'base64url'))
   decipher.setAuthTag(Buffer.from(tagEncoded, 'base64url'))
   const plain = Buffer.concat([decipher.update(Buffer.from(contentEncoded, 'base64url')), decipher.final()]).toString('utf8')

@@ -1,30 +1,20 @@
 import { NextResponse } from 'next/server'
 import type { AuthenticationResponseJSON } from '@simplewebauthn/types'
-import { z } from 'zod'
-
 import { createSession } from '@/server/auth/session'
 import { finishPasskeyAuthentication } from '@/server/auth/webauthn'
-
-const responseSchema = z.object({
-  id: z.string(),
-  rawId: z.string(),
-  type: z.literal('public-key'),
-  response: z.object({
-    clientDataJSON: z.string(),
-    authenticatorData: z.string(),
-    signature: z.string(),
-    userHandle: z.string().optional(),
-  }),
-  clientExtensionResults: z.record(z.string(), z.unknown()),
-})
+import { serializedPasskeyLoginSchema } from '@/lib/api-contracts'
+import type { PasskeyVerifyResponse } from '@/lib/api-contracts'
 
 export const POST = async (request: Request) => {
-  const response = responseSchema.safeParse(await request.json())
-  if (!response.success) return NextResponse.json({ error: 'invalid_response' }, { status: 400 })
+  const response = serializedPasskeyLoginSchema.safeParse(await request.json())
+  if (!response.success) {
+    return NextResponse.json({ error: 'invalid_response' }, { status: 400 })
+  }
   try {
     const administratorId = await finishPasskeyAuthentication(response.data as AuthenticationResponseJSON)
     await createSession(administratorId)
-    return NextResponse.json({ verified: true })
+    const verifiedResponse: PasskeyVerifyResponse = { verified: true }
+    return NextResponse.json(verifiedResponse)
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'verification_failed' }, { status: 401 })
   }

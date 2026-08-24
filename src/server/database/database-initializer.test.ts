@@ -30,7 +30,9 @@ describe('SQLite database initialization', () => {
         cwd: process.cwd(),
         env: { ...process.env, DATABASE_URL: databaseUrl, NODE_ENV: 'test' },
       })
-      if (result.status !== 0) throw new Error(result.error?.message ?? result.stderr.toString())
+      if (result.status !== 0) {
+        throw new Error(result.error?.message ?? result.stderr.toString())
+      }
       expect(JSON.parse(result.stdout.toString())).toMatchObject({ sessionCount: 0, title: 'System', imageBytes: 3 })
     } finally {
       rmSync(directory, { recursive: true, force: true })

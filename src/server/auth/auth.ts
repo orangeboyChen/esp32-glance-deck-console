@@ -15,11 +15,15 @@ export const createApiToken = () => {
 }
 
 export const requireApiScope = async (request: Request, requiredScope: string) => {
-  if (await currentAdministrator()) return true
+  if (await currentAdministrator()) {
+    return true
+  }
   const header = request.headers.get('authorization')
   const token = header?.startsWith('Bearer ') ? header.slice(7) : undefined
 
-  if (!token || !db) return false
+  if (!token || !db) {
+    return false
+  }
 
   const [apiToken] = await db
     .select()

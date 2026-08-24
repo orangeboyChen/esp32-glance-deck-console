@@ -13,12 +13,18 @@ const tick = async () => {
   try {
     const count = await dispatchQueuedCommands()
     const otaCount = await dispatchQueuedOtaJobs()
-    if (count > 0) console.log(`${workerName}: dispatched ${count} device command(s)`)
-    if (otaCount > 0) console.log(`${workerName}: dispatched ${otaCount} OTA job(s)`)
+    if (count > 0) {
+      console.log(`${workerName}: dispatched ${count} device command(s)`)
+    }
+    if (otaCount > 0) {
+      console.log(`${workerName}: dispatched ${otaCount} OTA job(s)`)
+    }
   } catch (error) {
     console.error(`${workerName}: command dispatch failed`, error)
   }
-  if (!db) return
+  if (!db) {
+    return
+  }
   const now = Date.now()
   const staleClaimBefore = new Date(now - 30 * 60 * 1000)
   const sources = await db

@@ -1,6 +1,7 @@
 import { asc, eq, sql } from 'drizzle-orm'
 
 import { db } from '@/server/database/db'
+import type { JsonObject } from '@/lib/api-contracts'
 import { publishDeviceRelease, type ReleasePageMetadata } from '@/server/messaging/mqtt'
 import { devices, displayReleasePages, displayReleases } from '@/server/database/schema'
 
@@ -32,7 +33,9 @@ const systemPageLast = (pageIds: string[]) => {
 }
 
 const getDeviceRelease = async (deviceId: string): Promise<DeviceRelease | undefined> => {
-  if (!db) return undefined
+  if (!db) {
+    return undefined
+  }
   const [device] = await db
     .select({
       id: devices.id,
@@ -44,14 +47,18 @@ const getDeviceRelease = async (deviceId: string): Promise<DeviceRelease | undef
     .from(devices)
     .where(eq(devices.id, deviceId))
     .limit(1)
-  if (!device?.release_id) return undefined
+  if (!device?.release_id) {
+    return undefined
+  }
 
   const [release] = await db
     .select({ id: displayReleases.id, version: displayReleases.version })
     .from(displayReleases)
     .where(eq(displayReleases.id, device.release_id))
     .limit(1)
-  if (!release) return undefined
+  if (!release) {
+    return undefined
+  }
 
   const pages = await db
     .select({
@@ -65,7 +72,9 @@ const getDeviceRelease = async (deviceId: string): Promise<DeviceRelease | undef
     .from(displayReleasePages)
     .where(eq(displayReleasePages.release_id, release.id))
     .orderBy(asc(displayReleasePages.position))
-  if (!pages.length) return undefined
+  if (!pages.length) {
+    return undefined
+  }
   return {
     device_id: device.id,
     release_id: release.id,
@@ -79,14 +88,18 @@ const getDeviceRelease = async (deviceId: string): Promise<DeviceRelease | undef
 
 export const getDevicePageConfiguration = async (deviceId: string): Promise<DevicePageConfiguration | undefined> => {
   const deviceRelease = await getDeviceRelease(deviceId)
-  if (!deviceRelease) return undefined
+  if (!deviceRelease) {
+    return undefined
+  }
   const availableIds = new Set(deviceRelease.pages.map((page) => page.page_id))
   const enabledPageIds = systemPageLast(
     (deviceRelease.enabled_page_ids?.length ? deviceRelease.enabled_page_ids : deviceRelease.pages.map((page) => page.page_id)).filter(
       (pageId) => availableIds.has(pageId),
     ),
   )
-  if (!enabledPageIds.length) return undefined
+  if (!enabledPageIds.length) {
+    return undefined
+  }
   const desiredPageId =
     deviceRelease.desired_page_id && enabledPageIds.includes(deviceRelease.desired_page_id)
       ? deviceRelease.desired_page_id
@@ -105,7 +118,9 @@ export const getDevicePageConfiguration = async (deviceId: string): Promise<Devi
 }
 
 export const updateDevicePageConfiguration = async (deviceId: string, enabledPageIds: string[], desiredPageId: string) => {
-  if (!db) throw new Error('database_unavailable')
+  if (!db) {
+    throw new Error('database_unavailable')
+  }
   if (
     enabledPageIds.length === 0 ||
     enabledPageIds.length > 10 ||
@@ -115,14 +130,20 @@ export const updateDevicePageConfiguration = async (deviceId: string, enabledPag
     throw new Error('device_page_configuration_invalid')
   }
   const deviceRelease = await getDeviceRelease(deviceId)
-  if (!deviceRelease) throw new Error('device_release_not_found')
+  if (!deviceRelease) {
+    throw new Error('device_release_not_found')
+  }
   const pageById = new Map(deviceRelease.pages.map((page) => [page.page_id, page]))
-  if (enabledPageIds.some((pageId) => !pageById.has(pageId))) throw new Error('device_page_not_in_release')
+  if (enabledPageIds.some((pageId) => !pageById.has(pageId))) {
+    throw new Error('device_page_not_in_release')
+  }
 
   const orderedPageIds = systemPageLast(enabledPageIds)
   const pages = orderedPageIds.map((pageId) => {
     const page = pageById.get(pageId)
-    if (!page) throw new Error('device_page_not_in_release')
+    if (!page) {
+      throw new Error('device_page_not_in_release')
+    }
     return page
   })
   await db.update(devices).set({ enabled_page_ids: orderedPageIds, desired_page_id: desiredPageId }).where(eq(devices.id, deviceId))
@@ -144,10 +165,18 @@ export const updateDevicePageConfiguration = async (deviceId: string, enabledPag
   } satisfies DevicePageConfiguration
 }
 
-export const validateDevicePageCommand = async (deviceId: string, action: string, payload: Record<string, unknown>) => {
-  if (action !== 'show_page') return
-  if (typeof payload.page_id !== 'string') throw new Error('page_id_required')
+export const validateDevicePageCommand = async (deviceId: string, action: string, payload: JsonObject) => {
+  if (action !== 'show_page') {
+    return
+  }
+  if (typeof payload.page_id !== 'string') {
+    throw new Error('page_id_required')
+  }
   const configuration = await getDevicePageConfiguration(deviceId)
-  if (!configuration) throw new Error('device_release_not_found')
-  if (!configuration.enabled_page_ids.includes(payload.page_id)) throw new Error('page_not_enabled')
+  if (!configuration) {
+    throw new Error('device_release_not_found')
+  }
+  if (!configuration.enabled_page_ids.includes(payload.page_id)) {
+    throw new Error('page_not_enabled')
+  }
 }

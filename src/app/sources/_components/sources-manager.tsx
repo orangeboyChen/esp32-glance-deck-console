@@ -10,6 +10,7 @@ import { useCallback, useEffect } from 'react'
 
 import { ConsolePageHeader } from '@/app/_components/console-page-header'
 import { Api } from '@/lib/api-client'
+import type { JsonValue } from '@/lib/api-contracts'
 
 import {
   sourceBaseUrlAtom,
@@ -32,8 +33,6 @@ import {
   soruxgptConnectingAtom,
   soruxgptErrorAtom,
   soruxgptTokenAtom,
-  type ImportPreview,
-  type Source,
 } from '@/app/sources/_components/state'
 
 export const SourcesManager = () => {
@@ -63,8 +62,7 @@ export const SourcesManager = () => {
     setLoading(true)
     try {
       const response = await Api.listSources()
-      if (!response.ok) throw new Error('source_load_failed')
-      setSources(((await response.json()) as { sources: Source[] }).sources)
+      setSources(response.sources)
     } catch {
       setError(translate('loadFailed'))
     } finally {
@@ -76,13 +74,13 @@ export const SourcesManager = () => {
   }, [loadSources])
 
   const connectSoruxgpt = async () => {
-    if (!soruxgptToken.trim()) return
+    if (!soruxgptToken.trim()) {
+      return
+    }
     setSoruxgptConnecting(true)
     setSoruxgptError(null)
     try {
-      const response = await Api.connectSoruxgpt({ token: soruxgptToken.trim() })
-      const payload = (await response.json()) as { error?: string }
-      if (!response.ok) throw new Error(payload.error || 'soruxgptConnectFailed')
+      await Api.connectSoruxgpt({ token: soruxgptToken.trim() })
       setSoruxgptToken('')
       toast.success(translate('soruxgptConnected'))
       await loadSources()
@@ -99,11 +97,9 @@ export const SourcesManager = () => {
     setPreview(null)
     setImporting(true)
     try {
-      const exported = JSON.parse(importText) as unknown
+      const exported = JSON.parse(importText) as JsonValue
       const response = await Api.previewCcSwitchImport(exported)
-      const payload = (await response.json()) as { preview?: ImportPreview; error?: string }
-      if (!response.ok || !payload.preview) throw new Error(payload.error || 'cc_switch_export_invalid')
-      const value = payload.preview
+      const value = response.preview
       setPreview(value)
       const url = new URL(value.url)
       setBaseUrl(url.origin)
@@ -137,9 +133,7 @@ export const SourcesManager = () => {
         mapper: JSON.parse(mapper),
         refresh_interval_seconds: Number(interval),
       }
-      const response = await Api.createSource(payload)
-      const body = (await response.json()) as { error?: string }
-      if (!response.ok) throw new Error(body.error || 'source_create_failed')
+      await Api.createSource(payload)
       toast.success(translate('sourceSaved'))
       setName('')
       setPreview(null)
@@ -155,8 +149,7 @@ export const SourcesManager = () => {
   const testSource = async (sourceId: string) => {
     setTestingId(sourceId)
     try {
-      const response = await Api.testSource(sourceId)
-      if (!response.ok) throw new Error('source_test_failed')
+      await Api.testSource(sourceId)
       toast.success(translate('testSucceeded'))
       await loadSources()
     } catch {

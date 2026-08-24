@@ -2,7 +2,7 @@ import { atom } from 'jotai'
 
 export type ApiToken = { id: string; label: string; scopes: string[]; created_at: string }
 export type Passkey = { id: string; created_at: string; transports: string[] | null }
-export type NewToken = { token: string; record: ApiToken }
+export type NewToken = { token: string; record: Omit<ApiToken, 'created_at'> }
 
 export const tokenLabelAtom = atom('Home Assistant')
 export const tokenScopesAtom = atom<string[]>(['devices:read', 'devices:command', 'alerts:read'])

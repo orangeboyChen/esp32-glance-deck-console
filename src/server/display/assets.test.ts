@@ -10,8 +10,11 @@ import {
 const previousKey = process.env.DEVICE_ASSET_SIGNING_KEY
 
 afterEach(() => {
-  if (previousKey) process.env.DEVICE_ASSET_SIGNING_KEY = previousKey
-  else delete process.env.DEVICE_ASSET_SIGNING_KEY
+  if (previousKey) {
+    process.env.DEVICE_ASSET_SIGNING_KEY = previousKey
+  } else {
+    delete process.env.DEVICE_ASSET_SIGNING_KEY
+  }
 })
 
 describe('device image signatures', () => {

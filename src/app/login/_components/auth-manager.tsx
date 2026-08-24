@@ -7,6 +7,8 @@ import { KeyRound, LogIn } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { Api } from '@/lib/api-client'
+import type { JsonObject } from '@/lib/api-contracts'
+import { toAuthenticatorTransports } from '@/lib/passkey'
 
 import {
   loginBusyAtom,
@@ -45,8 +47,7 @@ export const LoginManager = () => {
     setBusy(true)
     setError(null)
     try {
-      const response = await Api.login({ email, password })
-      if (!response.ok) throw new Error('invalidCredentials')
+      await Api.login({ email, password })
       finish()
     } catch (loginError) {
       setError(loginError instanceof Error ? translate(loginError.message as 'invalidCredentials') : translate('loginFailed'))
@@ -59,35 +60,37 @@ export const LoginManager = () => {
     setBusy(true)
     setError(null)
     try {
-      if (!window.PublicKeyCredential) throw new Error('passkeyUnsupported')
-      const optionsResponse = await Api.loginPasskeyOptions()
-      const options = (await optionsResponse.json()) as {
-        challenge: string
-        allowCredentials?: Array<{ id: string; type: 'public-key'; transports?: AuthenticatorTransport[] }>
+      if (!window.PublicKeyCredential) {
+        throw new Error('passkeyUnsupported')
       }
-      if (!optionsResponse.ok) throw new Error('loginFailed')
+      const options = await Api.loginPasskeyOptions()
       const credential = (await navigator.credentials.get({
         publicKey: {
           ...options,
           challenge: decodeBase64url(options.challenge),
-          allowCredentials: options.allowCredentials?.map((item) => ({ ...item, id: decodeBase64url(item.id) })),
+          allowCredentials: options.allowCredentials?.map((item) => ({
+            ...item,
+            id: decodeBase64url(item.id),
+            transports: toAuthenticatorTransports(item.transports),
+          })),
         },
       })) as PublicKeyCredential | null
-      if (!credential) throw new Error('loginFailed')
+      if (!credential) {
+        throw new Error('loginFailed')
+      }
       const response = credential.response as AuthenticatorAssertionResponse
-      const verifyResponse = await Api.loginPasskeyVerify({
+      await Api.loginPasskeyVerify({
         id: credential.id,
         rawId: encodeBase64url(credential.rawId),
-        type: credential.type,
+        type: 'public-key',
         response: {
           clientDataJSON: encodeBase64url(response.clientDataJSON),
           authenticatorData: encodeBase64url(response.authenticatorData),
           signature: encodeBase64url(response.signature),
           userHandle: response.userHandle ? encodeBase64url(response.userHandle) : undefined,
         },
-        clientExtensionResults: credential.getClientExtensionResults(),
+        clientExtensionResults: credential.getClientExtensionResults() as JsonObject,
       })
-      if (!verifyResponse.ok) throw new Error('loginFailed')
       finish()
     } catch (loginError) {
       setError(
@@ -158,8 +161,7 @@ export const SetupManager = () => {
     setBusy(true)
     setError(null)
     try {
-      const response = await Api.setup({ email, password })
-      if (!response.ok) throw new Error('setupFailed')
+      await Api.setup({ email, password })
       router.replace('/')
     } catch (setupError) {
       setError(setupError instanceof Error ? translate(setupError.message as 'setupFailed') : translate('setupFailed'))

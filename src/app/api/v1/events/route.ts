@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server'
 
 import { requireApiScope } from '@/server/auth/auth'
+import type { EventReadyPayload } from '@/lib/api-contracts'
 
 export const GET = async (request: Request) => {
-  if (!(await requireApiScope(request, 'devices:read'))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  if (!(await requireApiScope(request, 'devices:read'))) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
   const stream = new ReadableStream({
     start(controller) {
-      controller.enqueue(new TextEncoder().encode('event: ready\\ndata: {"status":"connected"}\\n\\n'))
+      const payload: EventReadyPayload = { status: 'connected' }
+      controller.enqueue(new TextEncoder().encode(`event: ready\\ndata: ${JSON.stringify(payload)}\\n\\n`))
       controller.close()
     },
   })

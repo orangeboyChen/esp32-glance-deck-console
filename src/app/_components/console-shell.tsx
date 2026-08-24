@@ -36,22 +36,23 @@ export const ConsoleShell = ({ children }: ConsoleShellProps) => {
   const translate = useTranslations('Dashboard')
   const [loggingOut, setLoggingOut] = useAtom(loggingOutAtom)
 
-  if (isAuthenticationPath(pathname)) return <>{children}</>
+  if (isAuthenticationPath(pathname)) {
+    return <>{children}</>
+  }
 
   const navigate = (href: string) => router.push(href)
   const changeLocale = async (value: string) => {
-    const response = await Api.setLocale(value)
-    if (!response.ok) {
+    try {
+      await Api.setLocale(value)
+      router.refresh()
+    } catch {
       toast.error(translate('logoutFailed'))
-      return
     }
-    router.refresh()
   }
   const logout = async () => {
     setLoggingOut(true)
     try {
-      const response = await Api.logout()
-      if (!response.ok) throw new Error('logout_failed')
+      await Api.logout()
       router.replace('/login')
       router.refresh()
     } catch {

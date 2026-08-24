@@ -10,14 +10,20 @@ export const GET = async (request: Request, { params }: { params: Promise<{ rele
   const { release_id: releaseId } = await params
   const url = new URL(request.url)
   const signedRequest = verifyReleaseImageSignature(releaseId, url.searchParams.get('expires_at'), url.searchParams.get('signature'))
-  if (!signedRequest && !(await requireApiScope(request, 'devices:read'))) return new NextResponse('unauthorized', { status: 401 })
-  if (!db) return new NextResponse('database_unavailable', { status: 503 })
+  if (!signedRequest && !(await requireApiScope(request, 'devices:read'))) {
+    return new NextResponse('unauthorized', { status: 401 })
+  }
+  if (!db) {
+    return new NextResponse('database_unavailable', { status: 503 })
+  }
   const [release] = await db
     .select({ device_image: displayReleases.device_image, content_sha256: displayReleases.content_sha256 })
     .from(displayReleases)
     .where(eq(displayReleases.id, releaseId))
     .limit(1)
-  if (!release) return new NextResponse('release_not_found', { status: 404 })
+  if (!release) {
+    return new NextResponse('release_not_found', { status: 404 })
+  }
   return new NextResponse(release.device_image, {
     headers: {
       'content-type': 'application/vnd.glance-deck.mono1',

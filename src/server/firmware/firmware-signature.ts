@@ -17,7 +17,9 @@ export const verifyFirmwareManifest = (input: {
   manifest_signature: string
 }) => {
   const publicKey = process.env.FIRMWARE_MANIFEST_PUBLIC_KEY
-  if (!publicKey) throw new Error('firmware_signing_key_missing')
+  if (!publicKey) {
+    throw new Error('firmware_signing_key_missing')
+  }
   try {
     return verify(
       null,

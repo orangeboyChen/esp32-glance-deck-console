@@ -14,7 +14,9 @@ export const databaseAvailable = Boolean(databaseUrl)
 export const databaseDialect: DatabaseDialect | undefined = databaseUrl ? databaseDialectFor(databaseUrl) : undefined
 
 const sqlitePath = databaseUrl && databaseDialect === 'sqlite' ? sqlitePathFor(databaseUrl) : undefined
-if (sqlitePath && sqlitePath !== ':memory:') mkdirSync(dirname(sqlitePath), { recursive: true })
+if (sqlitePath && sqlitePath !== ':memory:') {
+  mkdirSync(dirname(sqlitePath), { recursive: true })
+}
 
 const postgresqlClient = databaseUrl && databaseDialect === 'postgresql' ? postgres(databaseUrl, { max: 4 }) : undefined
 const sqliteClient = sqlitePath ? createClient({ url: sqlitePath === ':memory:' ? 'file::memory:' : `file:${sqlitePath}` }) : undefined

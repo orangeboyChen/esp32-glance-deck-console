@@ -15,14 +15,20 @@ export const GET = async (request: Request, { params }: { params: Promise<{ rele
     url.searchParams.get('expires_at'),
     url.searchParams.get('signature'),
   )
-  if (!signedRequest && !(await requireApiScope(request, 'devices:read'))) return new NextResponse('unauthorized', { status: 401 })
-  if (!db) return new NextResponse('database_unavailable', { status: 503 })
+  if (!signedRequest && !(await requireApiScope(request, 'devices:read'))) {
+    return new NextResponse('unauthorized', { status: 401 })
+  }
+  if (!db) {
+    return new NextResponse('database_unavailable', { status: 503 })
+  }
   const [page] = await db
     .select({ device_image: displayReleasePages.device_image, content_sha256: displayReleasePages.content_sha256 })
     .from(displayReleasePages)
     .where(and(eq(displayReleasePages.release_id, releaseId), eq(displayReleasePages.page_id, pageId)))
     .limit(1)
-  if (!page) return new NextResponse('release_page_not_found', { status: 404 })
+  if (!page) {
+    return new NextResponse('release_page_not_found', { status: 404 })
+  }
   return new NextResponse(page.device_image, {
     headers: {
       'content-type': 'application/vnd.glance-deck.mono1',

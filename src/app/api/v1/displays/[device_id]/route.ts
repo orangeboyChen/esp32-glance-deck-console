@@ -4,12 +4,15 @@ import { and, desc, eq, inArray } from 'drizzle-orm'
 import { requireApiScope } from '@/server/auth/auth'
 import { db } from '@/server/database/db'
 import { devices, displayReleasePages, displayReleases, sourceSnapshots, usageSources } from '@/server/database/schema'
+import type { DisplayDocument, DisplayResponse, JsonObject } from '@/lib/api-contracts'
 
 export const GET = async (request: Request, { params }: { params: Promise<{ device_id: string }> }) => {
   if (!(await requireApiScope(request, 'devices:read'))) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
-  if (!db) return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
+  if (!db) {
+    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
+  }
 
   const { device_id: deviceId } = await params
   const [display] = await db
@@ -34,7 +37,9 @@ export const GET = async (request: Request, { params }: { params: Promise<{ devi
     .where(eq(devices.id, deviceId))
     .limit(1)
 
-  if (!display) return NextResponse.json({ error: 'display_not_found' }, { status: 404 })
+  if (!display) {
+    return NextResponse.json({ error: 'display_not_found' }, { status: 404 })
+  }
   const snapshots = await db
     .select({
       values: sourceSnapshots.values,
@@ -53,10 +58,20 @@ export const GET = async (request: Request, { params }: { params: Promise<{ devi
   const latestSnapshot = freshSoruxgptSnapshot ? undefined : snapshots[0]
   const snapshot = freshSoruxgptSnapshot ?? latestSnapshot
   const { device_image: deviceImage, ...document } = display
-  return NextResponse.json({
+  const response: DisplayResponse = {
     ...document,
+    document: document.document as DisplayDocument,
+    created_at: document.created_at.toISOString(),
     image_bytes: deviceImage.length,
-    source: snapshot ?? null,
+    source: snapshot
+      ? {
+          values: snapshot.values as JsonObject,
+          fetched_at: snapshot.fetched_at.toISOString(),
+          source_name: snapshot.source_name,
+          mapper: snapshot.mapper as JsonObject,
+        }
+      : null,
     stale: !snapshot || Date.now() - snapshot.fetched_at.getTime() > 30 * 60 * 1000,
-  })
+  }
+  return NextResponse.json(response)
 }

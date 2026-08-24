@@ -68,7 +68,9 @@ export const renderBoundDocument = (template: DisplayDocument, values: SourceVal
 export const publishSourceChanges = async (sourceId: string, values: SourceValues, dependencies: PublishSourceDependencies = {}) => {
   const database = dependencies.database ?? db
   const publishRelease = dependencies.publishRelease ?? publishDeviceRelease
-  if (!database) return 0
+  if (!database) {
+    return 0
+  }
   const bindings = await database.select().from(displayBindings).where(eq(displayBindings.source_id, sourceId))
   let published = 0
 
@@ -83,7 +85,9 @@ export const publishSourceChanges = async (sourceId: string, values: SourceValue
       .select({ id: devices.id, release_id: devices.release_id })
       .from(devices)
       .where(inArray(devices.id, binding.device_ids))
-    if (assigned.length !== binding.device_ids.length) throw new Error('display_binding_device_not_found')
+    if (assigned.length !== binding.device_ids.length) {
+      throw new Error('display_binding_device_not_found')
+    }
 
     const existing =
       assigned.length > 0
@@ -101,7 +105,9 @@ export const publishSourceChanges = async (sourceId: string, values: SourceValue
             )
             .limit(1)
         : []
-    if (existing[0] && assigned.every((device) => device.release_id === existing[0].id)) continue
+    if (existing[0] && assigned.every((device) => device.release_id === existing[0].id)) {
+      continue
+    }
 
     const created = await database.transaction(async (transaction) => {
       const [latestRelease] = await transaction
@@ -139,7 +145,7 @@ export const publishSourceChanges = async (sourceId: string, values: SourceValue
           content_sha256: contentSha256,
         },
       ]
-      if (systemRendered && systemContentSha256)
+      if (systemRendered && systemContentSha256) {
         pages.push({
           release_id: release.id,
           page_id: 'system',
@@ -152,6 +158,7 @@ export const publishSourceChanges = async (sourceId: string, values: SourceValue
           image_height: 300,
           content_sha256: systemContentSha256,
         })
+      }
       await transaction.insert(displayReleasePages).values(pages)
       await transaction
         .update(devices)
@@ -164,7 +171,9 @@ export const publishSourceChanges = async (sourceId: string, values: SourceValue
       return release
     })
     const baseUrl = process.env.DEVICE_ASSET_URL ?? process.env.APP_URL
-    if (!baseUrl?.startsWith('https://')) throw new Error('device_asset_url_https_required')
+    if (!baseUrl?.startsWith('https://')) {
+      throw new Error('device_asset_url_https_required')
+    }
     await Promise.all(
       binding.device_ids.map((deviceId: string) =>
         publishRelease(deviceId, {

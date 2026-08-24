@@ -1,24 +1,30 @@
 import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
-import { z } from 'zod'
-
 import { db } from '@/server/database/db'
 import { encryptSecret } from '@/server/security/secrets'
 import { currentAdministrator } from '@/server/auth/session'
 import { usageSources } from '@/server/database/schema'
 import { normalizeSoruxgptToken, publicSoruxgptSource } from '@/server/source/soruxgpt'
 import { refreshUsageSource } from '@/server/source/usage-source'
-
-const soruxgptSchema = z.object({ token: z.string().min(1).max(8192) })
+import { soruxgptRequestSchema } from '@/lib/api-contracts'
+import type { ConnectSoruxgptResponse } from '@/lib/api-contracts'
 const sourceName = 'SoruxGPT Codex'
 
 export const POST = async (request: Request) => {
-  if (!(await currentAdministrator())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  if (!db) return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
-  const body = soruxgptSchema.safeParse(await request.json())
-  if (!body.success) return NextResponse.json({ error: 'invalid_soruxgpt_token' }, { status: 400 })
+  if (!(await currentAdministrator())) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+  if (!db) {
+    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
+  }
+  const body = soruxgptRequestSchema.safeParse(await request.json())
+  if (!body.success) {
+    return NextResponse.json({ error: 'invalid_soruxgpt_token' }, { status: 400 })
+  }
   const token = normalizeSoruxgptToken(body.data.token)
-  if (!token) return NextResponse.json({ error: 'invalid_soruxgpt_token' }, { status: 400 })
+  if (!token) {
+    return NextResponse.json({ error: 'invalid_soruxgpt_token' }, { status: 400 })
+  }
 
   const configuration = {
     name: sourceName,
@@ -37,8 +43,9 @@ export const POST = async (request: Request) => {
     previous_source: previousSource,
   } = await db.transaction(async (transaction) => {
     const [current] = await transaction.select().from(usageSources).where(eq(usageSources.name, sourceName)).limit(1)
-    if (current?.status === 'refreshing')
+    if (current?.status === 'refreshing') {
       return { source: publicSoruxgptSource(current as { id: string; name: string }), existing: true, refresh_in_progress: true }
+    }
     const updatedSource = current
       ? (
           await transaction
@@ -55,10 +62,16 @@ export const POST = async (request: Request) => {
         )[0]
     return { source: updatedSource, existing: Boolean(current), refresh_in_progress: false, previous_source: current ?? null }
   })
-  if (!source) return NextResponse.json({ error: 'source_create_failed' }, { status: 500 })
-  if (refreshInProgress) return NextResponse.json({ source, error: 'source_refresh_in_progress' }, { status: 409 })
+  if (!source) {
+    return NextResponse.json({ error: 'source_create_failed' }, { status: 500 })
+  }
+  if (refreshInProgress) {
+    const response: ConnectSoruxgptResponse = { source, error: 'source_refresh_in_progress', existing, refresh_in_progress: true }
+    return NextResponse.json(response, { status: 409 })
+  }
   try {
-    return NextResponse.json({ source, values: await refreshUsageSource(source.id, true) }, { status: existing ? 200 : 201 })
+    const response: ConnectSoruxgptResponse = { source, values: await refreshUsageSource(source.id, true), existing }
+    return NextResponse.json(response, { status: existing ? 200 : 201 })
   } catch (error) {
     if (previousSource) {
       await db
@@ -81,6 +94,11 @@ export const POST = async (request: Request) => {
     } else {
       await db.delete(usageSources).where(eq(usageSources.id, source.id))
     }
-    return NextResponse.json({ source, error: error instanceof Error ? error.message : 'soruxgpt_refresh_failed' }, { status: 502 })
+    const response: ConnectSoruxgptResponse = {
+      source,
+      error: error instanceof Error ? error.message : 'soruxgpt_refresh_failed',
+      existing,
+    }
+    return NextResponse.json(response, { status: 502 })
   }
 }

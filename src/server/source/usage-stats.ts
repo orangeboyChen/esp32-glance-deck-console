@@ -32,7 +32,9 @@ const numeric = (value: UsageValue) => {
 const deltaSince = (snapshots: UsageSnapshot[], boundary: Date, currentUsed: number) => {
   const baseline = snapshots.find((snapshot) => snapshot.fetched_at >= boundary)
   const baselineUsed = baseline ? numeric(baseline.values.used) : null
-  if (baselineUsed === null || currentUsed < baselineUsed) return null
+  if (baselineUsed === null || currentUsed < baselineUsed) {
+    return null
+  }
   return currentUsed - baselineUsed
 }
 

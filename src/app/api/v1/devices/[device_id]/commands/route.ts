@@ -1,29 +1,30 @@
 import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
-import { z } from 'zod'
-
 import { requireApiScope } from '@/server/auth/auth'
 import { db } from '@/server/database/db'
 import { validateDevicePageCommand } from '@/server/device/device-pages'
 import { deviceCommands, devices } from '@/server/database/schema'
-
-const commandSchema = z.object({
-  action: z.enum(['show_page', 'next_page', 'previous_page', 'set_rotation', 'refresh_release', 'enter_maintenance']),
-  payload: z.record(z.string(), z.unknown()).default({}),
-})
+import { deviceCommandRequestSchema } from '@/lib/api-contracts'
+import type { DeviceCommandRequest, DeviceCommandResponse } from '@/lib/api-contracts'
 
 export const POST = async (request: Request, { params }: { params: Promise<{ device_id: string }> }) => {
   if (!(await requireApiScope(request, 'devices:command'))) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
-  if (!db) return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
+  if (!db) {
+    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
+  }
 
-  const body = commandSchema.safeParse(await request.json())
-  if (!body.success) return NextResponse.json({ error: 'invalid_command', issues: body.error.issues }, { status: 400 })
+  const body = deviceCommandRequestSchema.safeParse(await request.json())
+  if (!body.success) {
+    return NextResponse.json({ error: 'invalid_command', issues: body.error.issues }, { status: 400 })
+  }
 
   const { device_id: deviceId } = await params
   const [device] = await db.select({ id: devices.id }).from(devices).where(eq(devices.id, deviceId)).limit(1)
-  if (!device) return NextResponse.json({ error: 'device_not_found' }, { status: 404 })
+  if (!device) {
+    return NextResponse.json({ error: 'device_not_found' }, { status: 404 })
+  }
   try {
     await validateDevicePageCommand(deviceId, body.data.action, body.data.payload)
   } catch (error) {
@@ -45,5 +46,13 @@ export const POST = async (request: Request, { params }: { params: Promise<{ dev
       .where(eq(devices.id, deviceId))
   }
 
-  return NextResponse.json({ command }, { status: 202 })
+  const response: DeviceCommandResponse = {
+    command: {
+      ...command,
+      payload: command.payload as DeviceCommandRequest['payload'],
+      created_at: command.created_at.toISOString(),
+      confirmed_at: command.confirmed_at?.toISOString() ?? null,
+    },
+  }
+  return NextResponse.json(response, { status: 202 })
 }

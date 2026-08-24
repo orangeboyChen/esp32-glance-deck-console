@@ -48,19 +48,27 @@ export const normalizeSoruxgptCodex = (value: unknown, now = new Date()): Record
       const limit = record(rawLimit) as SoruxUsageLimit | null
       const current = numberValue(limit?.current_usage)
       const maximum = numberValue(limit?.limit_value)
-      if (limit && current !== null && maximum !== null && current >= 0 && maximum > 0) limits.push({ ...limit, current, limit: maximum })
+      if (limit && current !== null && maximum !== null && current >= 0 && maximum > 0) {
+        limits.push({ ...limit, current, limit: maximum })
+      }
     }
   }
   const activeLimits = limits.filter((item) => {
     const expiresAt = stringValue(item.expires_at)
-    if (!expiresAt) return true
+    if (!expiresAt) {
+      return true
+    }
     const expiresAtMs = Date.parse(expiresAt)
     return Number.isFinite(expiresAtMs) && expiresAtMs > now.getTime()
   })
-  if (!activeLimits.length) throw new Error('soruxgpt_usage_limits_missing')
+  if (!activeLimits.length) {
+    throw new Error('soruxgpt_usage_limits_missing')
+  }
 
   const limitTypes = new Set(activeLimits.map((item) => stringValue(item.limit_type)?.toLowerCase() ?? 'units'))
-  if (limitTypes.size !== 1) throw new Error('soruxgpt_usage_limits_mixed_units')
+  if (limitTypes.size !== 1) {
+    throw new Error('soruxgpt_usage_limits_mixed_units')
+  }
   const used = activeLimits.reduce((total, item) => total + item.current, 0)
   const total = activeLimits.reduce((sum, item) => sum + item.limit, 0)
   const limitType = [...limitTypes][0] ?? 'units'

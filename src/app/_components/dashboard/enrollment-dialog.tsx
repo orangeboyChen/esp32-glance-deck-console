@@ -28,7 +28,9 @@ export const EnrollmentDialog = ({ open, onClose }: EnrollmentDialogProps) => {
   const [error, setError] = useAtom(enrollmentErrorAtom)
 
   const close = () => {
-    if (submitting) return
+    if (submitting) {
+      return
+    }
     setError(null)
     setName('')
     setPairingCode('')
@@ -48,9 +50,7 @@ export const EnrollmentDialog = ({ open, onClose }: EnrollmentDialogProps) => {
     setSubmitting(true)
     try {
       const response = await Api.enrollDevice({ name: name.trim(), pairing_code: pairingCode, board_model: 'ESP32-S3-RLCD-4.2' })
-      const payload = (await response.json()) as { error?: string; device_id?: string }
-      if (!response.ok) throw new Error(payload.error || 'enrollment_failed')
-      toast.success(translate('deviceAdded', { id: payload.device_id || '' }))
+      toast.success(translate('deviceAdded', { id: response.device_id }))
       finish()
       router.refresh()
     } catch (submissionError) {

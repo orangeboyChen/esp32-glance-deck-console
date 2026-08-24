@@ -62,7 +62,9 @@ const overlayPageIndicator = (frame: Buffer, activeIndex: number, pageCount: num
       for (let x = circleX - 4; x <= circleX + 4; x += 1) {
         const distance = (x - circleX) ** 2 + (y - centerY) ** 2
         const offset = y * DISPLAY_WIDTH + x
-        if (distance <= 16) overlay[offset >> 3] &= ~(0x80 >> (offset & 7))
+        if (distance <= 16) {
+          overlay[offset >> 3] &= ~(0x80 >> (offset & 7))
+        }
         if (distance <= 16 && (index === activeIndex || distance >= 9)) {
           overlay[offset >> 3] |= 0x80 >> (offset & 7)
         }
@@ -90,7 +92,9 @@ const writePng = async (name: string, frame: Buffer) => {
 }
 
 await mkdir(imageDirectory, { recursive: true })
-for (const [name, document] of Object.entries(pages)) await writePng(name, renderDeviceBitmap(document).device_image)
+for (const [name, document] of Object.entries(pages)) {
+  await writePng(name, renderDeviceBitmap(document).device_image)
+}
 const usage = renderDeviceBitmap(pages.usage).device_image
 await writePng('offline', usage)
 await writePng('navigation', overlayPageIndicator(usage, 1, 3))

@@ -36,7 +36,6 @@ import {
   resolveDeviceCommandAtom,
   selectedDeviceIdAtom,
   selectedPreviewIdAtom,
-  type DevicePageConfiguration,
 } from '@/app/_components/dashboard/state'
 import type { DeviceSummary } from '@/server/device/devices'
 
@@ -46,9 +45,15 @@ type DeviceDashboardProps = {
 }
 
 const statusColor = (status: DeviceSummary['status']) => {
-  if (status === 'online') return 'green'
-  if (status === 'error') return 'red'
-  if (status === 'offline') return 'default'
+  if (status === 'online') {
+    return 'green'
+  }
+  if (status === 'error') {
+    return 'red'
+  }
+  if (status === 'offline') {
+    return 'default'
+  }
   return 'gold'
 }
 
@@ -133,15 +138,20 @@ export const DeviceDashboard = ({ devices, summary }: DeviceDashboardProps) => {
     let cancelled = false
     setPageLoading(true)
     void Api.getDevicePages(selectedDeviceId)
-      .then(async (response) => (response.ok ? (response.json() as Promise<DevicePageConfiguration>) : null))
       .then((configuration) => {
-        if (!cancelled) setPageConfiguration(configuration)
+        if (!cancelled) {
+          setPageConfiguration(configuration)
+        }
       })
       .catch(() => {
-        if (!cancelled) setPageConfiguration(null)
+        if (!cancelled) {
+          setPageConfiguration(null)
+        }
       })
       .finally(() => {
-        if (!cancelled) setPageLoading(false)
+        if (!cancelled) {
+          setPageLoading(false)
+        }
       })
     return () => {
       cancelled = true
@@ -149,11 +159,15 @@ export const DeviceDashboard = ({ devices, summary }: DeviceDashboardProps) => {
   }, [selectedDeviceId, setPageConfiguration, setPageLoading])
 
   const togglePage = (pageId: string, checked: boolean) => {
-    if (!pageConfiguration) return
+    if (!pageConfiguration) {
+      return
+    }
     const enabledPageIds = checked
       ? [...pageConfiguration.enabled_page_ids, pageId]
       : pageConfiguration.enabled_page_ids.filter((item) => item !== pageId)
-    if (!enabledPageIds.length || enabledPageIds.length > 10) return
+    if (!enabledPageIds.length || enabledPageIds.length > 10) {
+      return
+    }
     setPageConfiguration({
       ...pageConfiguration,
       enabled_page_ids: enabledPageIds,
@@ -162,25 +176,30 @@ export const DeviceDashboard = ({ devices, summary }: DeviceDashboardProps) => {
   }
 
   const movePage = (pageId: string, direction: -1 | 1) => {
-    if (!pageConfiguration) return
+    if (!pageConfiguration) {
+      return
+    }
     const index = pageConfiguration.enabled_page_ids.indexOf(pageId)
     const nextIndex = index + direction
-    if (index < 0 || nextIndex < 0 || nextIndex >= pageConfiguration.enabled_page_ids.length) return
+    if (index < 0 || nextIndex < 0 || nextIndex >= pageConfiguration.enabled_page_ids.length) {
+      return
+    }
     const enabledPageIds = [...pageConfiguration.enabled_page_ids]
     ;[enabledPageIds[index], enabledPageIds[nextIndex]] = [enabledPageIds[nextIndex], enabledPageIds[index]]
     setPageConfiguration({ ...pageConfiguration, enabled_page_ids: enabledPageIds })
   }
 
   const savePages = async () => {
-    if (!selectedDeviceId || !pageConfiguration) return
+    if (!selectedDeviceId || !pageConfiguration) {
+      return
+    }
     setPageSaving(true)
     try {
       const response = await Api.updateDevicePages(selectedDeviceId, {
         enabled_page_ids: pageConfiguration.enabled_page_ids,
         desired_page_id: pageConfiguration.desired_page_id,
       })
-      if (!response.ok) throw new Error('page_configuration_rejected')
-      setPageConfiguration((await response.json()) as DevicePageConfiguration)
+      setPageConfiguration(response)
       toast.success(translate('pagesSaved'))
     } catch {
       toast.error(translate('pagesSaveFailed'))
@@ -192,9 +211,7 @@ export const DeviceDashboard = ({ devices, summary }: DeviceDashboardProps) => {
   const refreshPreview = async (device: DeviceSummary) => {
     beginCommand(device.id)
     try {
-      const response = await Api.previewDevice(device.id)
-      if (!response.ok) throw new Error(translate('previewRejected'))
-      const previewSvg = await response.text()
+      const previewSvg = await Api.previewDevice(device.id)
       setPreviewSvgByDevice((previews) => ({ ...previews, [device.id]: previewSvg }))
       resolveCommand({ device_id: device.id, message: translate('previewCurrent'), phase: 'accepted' })
       toast.success(translate('previewRefreshed'))

@@ -1,20 +1,19 @@
-import { NextResponse } from 'next/server'
-import { z } from 'zod'
-
 import { authenticateAdministrator, createSession } from '@/server/auth/session'
+import { ApiRouteError, requestJson } from '@/lib/api-response'
+import { loginRequestSchema } from '@/lib/api-contracts'
+import type { AuthResponse } from '@/lib/api-contracts'
 
-const loginSchema = z.object({
-  email: z.email(),
-  password: z.string().min(1),
-})
+export const POST = requestJson(
+  loginRequestSchema,
+  async (payload) => {
+    const administrator = await authenticateAdministrator(payload.email, payload.password)
+    if (!administrator) {
+      throw new ApiRouteError('invalid_credentials', 401)
+    }
 
-export const POST = async (request: Request) => {
-  const body = loginSchema.safeParse(await request.json())
-  if (!body.success) return NextResponse.json({ error: 'invalid_login' }, { status: 400 })
-
-  const administrator = await authenticateAdministrator(body.data.email, body.data.password)
-  if (!administrator) return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 })
-
-  await createSession(administrator.id)
-  return NextResponse.json({ administrator: { id: administrator.id, email: administrator.email } })
-}
+    await createSession(administrator.id)
+    const response: AuthResponse = { administrator: { id: administrator.id, email: administrator.email } }
+    return { data: response }
+  },
+  'invalid_login',
+)

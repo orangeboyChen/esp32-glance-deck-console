@@ -10,9 +10,13 @@ import { databaseDialect, db } from '@/server/database/db'
 let initialization: Promise<void> | undefined
 
 export const initializeDatabase = () => {
-  if (initialization) return initialization
+  if (initialization) {
+    return initialization
+  }
   initialization = (async () => {
-    if (!db || !databaseDialect) return
+    if (!db || !databaseDialect) {
+      return
+    }
     if (databaseDialect === 'sqlite') {
       await migrateSqlite(db as unknown as LibSQLDatabase, { migrationsFolder: join(process.cwd(), 'drizzle/sqlite') })
       return

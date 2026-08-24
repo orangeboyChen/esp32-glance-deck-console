@@ -25,7 +25,9 @@ export type DeviceSummary = {
 
 export const listDevices = async (): Promise<DeviceSummary[]> => {
   const database = db
-  if (!database) return []
+  if (!database) {
+    return []
+  }
 
   const rows = await database
     .select({
@@ -78,7 +80,9 @@ export const listDevices = async (): Promise<DeviceSummary[]> => {
 }
 
 export const dashboardSummary = async () => {
-  if (!db) return { active_alerts: 0, source_updates_today: 0 }
+  if (!db) {
+    return { active_alerts: 0, source_updates_today: 0 }
+  }
   const startOfDay = new Date()
   startOfDay.setHours(0, 0, 0, 0)
   const [[active], [updates]] = await Promise.all([

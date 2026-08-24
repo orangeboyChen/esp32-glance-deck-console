@@ -25,8 +25,6 @@ import {
   newPage,
   systemPage,
   type DisplayDocument as Document,
-  type Device,
-  type Release,
 } from '@/app/displays/_components/state'
 
 export const DisplayManager = () => {
@@ -47,9 +45,8 @@ export const DisplayManager = () => {
   const loadData = useCallback(async () => {
     try {
       const [deviceResponse, releaseResponse] = await Promise.all([Api.listDevices(), Api.listReleases()])
-      if (!deviceResponse.ok || !releaseResponse.ok) throw new Error('load_failed')
-      setDevices(((await deviceResponse.json()) as { devices: Device[] }).devices)
-      setReleases(((await releaseResponse.json()) as { releases: Release[] }).releases.slice(-10).reverse())
+      setDevices(deviceResponse.devices)
+      setReleases(releaseResponse.releases.slice(-10).reverse())
     } catch {
       setError(translate('loadFailed'))
     }
@@ -64,24 +61,31 @@ export const DisplayManager = () => {
 
   const activePage = pages.find((page) => page.page_id === activePageId) ?? pages[0]
   const updateDocument = (field: keyof Document, value: string | number) => {
-    if (!activePage) return
+    if (!activePage) {
+      return
+    }
     setPages(
       pages.map((page) => (page.page_id === activePage.page_id ? { ...page, document: { ...page.document, [field]: value } } : page)),
     )
   }
   const updateLines = (value: string) => {
     setLinesText(value)
-    if (!activePage) return
+    if (!activePage) {
+      return
+    }
     try {
       const lines = JSON.parse(value) as Document['lines']
-      if (Array.isArray(lines))
+      if (Array.isArray(lines)) {
         setPages(pages.map((page) => (page.page_id === activePage.page_id ? { ...page, document: { ...page.document, lines } } : page)))
+      }
     } catch {
       /* keep the last valid document while editing */
     }
   }
   const updateProgress = (field: 'value' | 'max' | 'label' | 'unit', value: string, index = 0) => {
-    if (!activePage) return
+    if (!activePage) {
+      return
+    }
     const meters = activePage.document.progresses?.length
       ? activePage.document.progresses
       : [activePage.document.progress ?? { value: 0, max: 100 }]
@@ -95,14 +99,14 @@ export const DisplayManager = () => {
     )
   }
   const preview = async () => {
-    if (!activePage?.document.title.trim()) return setError(translate('titleRequired'))
+    if (!activePage?.document.title.trim()) {
+      return setError(translate('titleRequired'))
+    }
     setPreviewLoading(true)
     setError(null)
     try {
       const response = await Api.previewRelease(activePage.document)
-      const body = (await response.json()) as { preview_svg?: string; error?: string }
-      if (!response.ok || !body.preview_svg) throw new Error(body.error || 'preview_failed')
-      setPreviewSvg(body.preview_svg)
+      setPreviewSvg(response.preview_svg)
     } catch {
       setError(translate('previewFailed'))
     } finally {
@@ -110,14 +114,14 @@ export const DisplayManager = () => {
     }
   }
   const publish = async () => {
-    if (!pages.every((page) => page.page_id && page.document.title.trim()) || !selectedDevices.length) return
+    if (!pages.every((page) => page.page_id && page.document.title.trim()) || !selectedDevices.length) {
+      return
+    }
     setPublishing(true)
     try {
       const response = await Api.publishRelease({ active_page_id: activePageId, pages, device_ids: selectedDevices })
-      const body = (await response.json()) as { error?: string; failed_devices?: string[] }
-      if (!response.ok) throw new Error(body.error || 'publish_failed')
       toast.success(
-        body.failed_devices?.length ? translate('publishedPartial', { count: body.failed_devices.length }) : translate('published'),
+        response.failed_devices.length ? translate('publishedPartial', { count: response.failed_devices.length }) : translate('published'),
       )
       setConfirmOpen(false)
       await loadData()
@@ -132,15 +136,21 @@ export const DisplayManager = () => {
     if (pages.length < 10) {
       const pageIds = new Set(pages.map((page) => page.page_id))
       let index = 1
-      while (pageIds.has(`page-${index}`)) index += 1
+      while (pageIds.has(`page-${index}`)) {
+        index += 1
+      }
       setPages([...pages.filter((page) => page.page_id !== 'system'), newPage(index), systemPage])
     }
   }
   const removePage = (pageId: string) => {
-    if (pageId === 'system' || pages.length <= 2) return
+    if (pageId === 'system' || pages.length <= 2) {
+      return
+    }
     const next = pages.filter((page) => page.page_id !== pageId)
     setPages(next)
-    if (activePageId === pageId) setActivePageId(next[0].page_id)
+    if (activePageId === pageId) {
+      setActivePageId(next[0].page_id)
+    }
   }
 
   return (
@@ -217,7 +227,9 @@ export const DisplayManager = () => {
               <Checkbox
                 checked={Boolean(activePage.document.progress || activePage.document.progresses?.length)}
                 onChange={(checked) => {
-                  if (!activePage) return
+                  if (!activePage) {
+                    return
+                  }
                   setPages(
                     pages.map((page) =>
                       page.page_id === activePage.page_id

@@ -7,7 +7,9 @@ import { publishDeviceOta } from '@/server/messaging/mqtt'
 import { firmwareReleases, otaJobs } from '@/server/database/schema'
 
 export const dispatchQueuedOtaJobs = async () => {
-  if (!db) return 0
+  if (!db) {
+    return 0
+  }
   let dispatched = 0
   for (let index = 0; index < 10; index += 1) {
     const processed = await db.transaction(async (transaction) => {
@@ -29,7 +31,9 @@ export const dispatchQueuedOtaJobs = async () => {
       type LockableQuery = { for: (mode: 'update', options: { skipLocked: true }) => Promise<QueryResult> }
       const [job] =
         databaseDialect === 'postgresql' ? await (query as unknown as LockableQuery).for('update', { skipLocked: true }) : await query
-      if (!job) return false
+      if (!job) {
+        return false
+      }
 
       try {
         await publishDeviceOta(job.device_id, job)
@@ -49,7 +53,9 @@ export const dispatchQueuedOtaJobs = async () => {
       }
       return true
     })
-    if (!processed) break
+    if (!processed) {
+      break
+    }
     dispatched += 1
   }
   return dispatched

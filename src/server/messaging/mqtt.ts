@@ -14,8 +14,12 @@ export const MAX_DEVICE_MQTT_PAYLOAD_BYTES = 8_192
 
 export const validateMqttUrl = (url: string, allowPlaintextInternal = false) => {
   const parsed = new URL(url)
-  if (parsed.protocol === 'mqtts:' || parsed.protocol === 'wss:') return parsed
-  if (allowPlaintextInternal && (parsed.protocol === 'mqtt:' || parsed.protocol === 'ws:')) return parsed
+  if (parsed.protocol === 'mqtts:' || parsed.protocol === 'wss:') {
+    return parsed
+  }
+  if (allowPlaintextInternal && (parsed.protocol === 'mqtt:' || parsed.protocol === 'ws:')) {
+    return parsed
+  }
   throw new Error('mqtt_tls_required')
 }
 
@@ -34,23 +38,32 @@ export const otaMessage = (job: { id: string; nonce: string; version: string; ma
 }
 
 export const releaseMessage = (release: { id: string; active_page_id: string; pages: ReleasePageMetadata[] }, baseUrl: string) => {
-  if (!baseUrl.startsWith('https://')) throw new Error('device_asset_url_https_required')
-  if (release.pages.length === 0 || !release.pages.some((page) => page.page_id === release.active_page_id))
+  if (!baseUrl.startsWith('https://')) {
+    throw new Error('device_asset_url_https_required')
+  }
+  if (release.pages.length === 0 || !release.pages.some((page) => page.page_id === release.active_page_id)) {
     throw new Error('release_pages_invalid')
+  }
   const message = JSON.stringify({
     release_id: release.id,
     document_version: 1,
     active_page_id: release.active_page_id,
     pages: release.pages.map((page) => ({ ...page, image_url: signedReleasePageImageUrl(baseUrl, release.id, page.page_id) })),
   })
-  if (Buffer.byteLength(message, 'utf8') > MAX_DEVICE_MQTT_PAYLOAD_BYTES) throw new Error('release_message_too_large')
+  if (Buffer.byteLength(message, 'utf8') > MAX_DEVICE_MQTT_PAYLOAD_BYTES) {
+    throw new Error('release_message_too_large')
+  }
   return message
 }
 
 const getClient = () => {
-  if (mqttClient) return mqttClient
+  if (mqttClient) {
+    return mqttClient
+  }
   const url = process.env.MQTT_URL
-  if (!url) throw new Error('mqtt_url_missing')
+  if (!url) {
+    throw new Error('mqtt_url_missing')
+  }
   const endpoint = validateMqttUrl(url, process.env.MQTT_ALLOW_PLAINTEXT_INTERNAL === 'true')
   mqttClient = connect(endpoint.toString(), {
     reconnectPeriod: 5_000,
@@ -119,7 +132,9 @@ export const publishDeviceRelease = async (
   client = getClient(),
 ) => {
   const baseUrl = process.env.DEVICE_ASSET_URL ?? process.env.APP_URL
-  if (!baseUrl) throw new Error('device_asset_url_https_required')
+  if (!baseUrl) {
+    throw new Error('device_asset_url_https_required')
+  }
   const message = releaseMessage(release, baseUrl)
   await new Promise<void>((resolve, reject) =>
     client.publish(`${TOPIC_PREFIX}/${deviceId}/release`, message, { qos: 1, retain: true }, (error) =>
@@ -153,7 +168,9 @@ type OtaStateMessage = {
 }
 
 export const isDeviceState = (value: unknown): value is DeviceStateMessage => {
-  if (!value || typeof value !== 'object') return false
+  if (!value || typeof value !== 'object') {
+    return false
+  }
   const state = value as Record<string, unknown>
   return (
     typeof state.version === 'number' &&
@@ -167,7 +184,9 @@ export const isDeviceState = (value: unknown): value is DeviceStateMessage => {
 }
 
 const isDevicePowerState = (value: unknown): value is NonNullable<DeviceStateMessage['power']> => {
-  if (!value || typeof value !== 'object') return false
+  if (!value || typeof value !== 'object') {
+    return false
+  }
   const power = value as Record<string, unknown>
   const hasValidPercent =
     power.battery_percent === undefined ||
@@ -187,7 +206,9 @@ const isDevicePowerState = (value: unknown): value is NonNullable<DeviceStateMes
 }
 
 export const isOtaState = (value: unknown): value is OtaStateMessage => {
-  if (!value || typeof value !== 'object') return false
+  if (!value || typeof value !== 'object') {
+    return false
+  }
   const message = value as Record<string, unknown>
   const validPhase = ['downloading', 'verifying', 'rebooting', 'healthy', 'rolled_back', 'failed'].includes(String(message.phase))
   return (
@@ -204,14 +225,18 @@ export const isOtaState = (value: unknown): value is OtaStateMessage => {
 
 export const consumeDeviceState = async (topic: string, payload: Buffer) => {
   const match = /^glance_deck\/([a-z0-9-]{1,64})\/state$/.exec(topic)
-  if (!match || !db || payload.length > MAX_DEVICE_MQTT_PAYLOAD_BYTES) return
+  if (!match || !db || payload.length > MAX_DEVICE_MQTT_PAYLOAD_BYTES) {
+    return
+  }
   let state: unknown
   try {
     state = JSON.parse(payload.toString('utf8'))
   } catch {
     return
   }
-  if (!isDeviceState(state)) return
+  if (!isDeviceState(state)) {
+    return
+  }
   const deviceId = match[1]
   await db
     .update(devices)
@@ -243,14 +268,18 @@ export const consumeDeviceState = async (topic: string, payload: Buffer) => {
 
 export const consumeOtaState = async (topic: string, payload: Buffer) => {
   const match = /^glance_deck\/([a-z0-9-]{1,64})\/ota\/state$/.exec(topic)
-  if (!match || !db || payload.length > MAX_DEVICE_MQTT_PAYLOAD_BYTES) return
+  if (!match || !db || payload.length > MAX_DEVICE_MQTT_PAYLOAD_BYTES) {
+    return
+  }
   let state: unknown
   try {
     state = JSON.parse(payload.toString('utf8'))
   } catch {
     return
   }
-  if (!isOtaState(state)) return
+  if (!isOtaState(state)) {
+    return
+  }
   const phase = state.phase
   await db
     .update(otaJobs)
@@ -264,14 +293,18 @@ export const consumeOtaState = async (topic: string, payload: Buffer) => {
 
 export const consumeOtaCheck = async (topic: string, payload: Buffer, database = db, client?: MqttClient) => {
   const match = new RegExp(`^${TOPIC_PREFIX}/([a-z0-9-]{1,64})/ota/check$`).exec(topic)
-  if (!match || !database || payload.length > MAX_DEVICE_MQTT_PAYLOAD_BYTES) return
+  if (!match || !database || payload.length > MAX_DEVICE_MQTT_PAYLOAD_BYTES) {
+    return
+  }
   let request: unknown
   try {
     request = JSON.parse(payload.toString('utf8'))
   } catch {
     return
   }
-  if (!request || typeof request !== 'object' || (request as Record<string, unknown>).version !== 1) return
+  if (!request || typeof request !== 'object' || (request as Record<string, unknown>).version !== 1) {
+    return
+  }
   const deviceId = match[1]
   const [device] = await database
     .select({ board_model: devices.board_model, firmware_version: devices.firmware_version })
@@ -318,7 +351,9 @@ export const consumeOtaCheck = async (topic: string, payload: Buffer, database =
 }
 
 export const startDeviceStateConsumer = () => {
-  if (stateConsumerStarted) return
+  if (stateConsumerStarted) {
+    return
+  }
   const client = getClient()
   stateConsumerStarted = true
   client.subscribe([`${TOPIC_PREFIX}/+/state`, `${TOPIC_PREFIX}/+/ota/state`, `${TOPIC_PREFIX}/+/ota/check`], { qos: 1 })

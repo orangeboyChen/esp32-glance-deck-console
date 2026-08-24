@@ -4,7 +4,9 @@ import { LoginManager } from '@/app/login/_components/auth-manager'
 import { administratorExists } from '@/server/auth/session'
 
 const loginPage = async () => {
-  if (!(await administratorExists())) redirect('/setup')
+  if (!(await administratorExists())) {
+    redirect('/setup')
+  }
   return <LoginManager />
 }
 

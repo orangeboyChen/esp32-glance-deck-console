@@ -17,8 +17,12 @@ export const validClaimSecret = (value: string) => {
 }
 
 export const announceEnrollment = async (pairingCode: string, claimSecret: string, boardModel: 'ESP32-S3-RLCD-4.2') => {
-  if (!db) throw new Error('database_unavailable')
-  if (!/^\d{6}$/.test(pairingCode) || !validClaimSecret(claimSecret)) throw new Error('invalid_enrollment_request')
+  if (!db) {
+    throw new Error('database_unavailable')
+  }
+  if (!/^\d{6}$/.test(pairingCode) || !validClaimSecret(claimSecret)) {
+    throw new Error('invalid_enrollment_request')
+  }
   const pairingCodeHash = codeHash(pairingCode)
   const claimSecretHash = codeHash(claimSecret)
   const [existing] = await db
@@ -27,10 +31,14 @@ export const announceEnrollment = async (pairingCode: string, claimSecret: strin
     .where(eq(deviceEnrollmentRequests.pairing_code_hash, pairingCodeHash))
     .limit(1)
   if (existing && existing.expires_at > new Date()) {
-    if (existing.claim_secret_hash !== claimSecretHash || existing.board_model !== boardModel) throw new Error('pairing_code_in_use')
+    if (existing.claim_secret_hash !== claimSecretHash || existing.board_model !== boardModel) {
+      throw new Error('pairing_code_in_use')
+    }
     return { expires_at: existing.expires_at, status: existing.claimed_device_id ? 'approved' : 'pending' }
   }
-  if (existing) await db.delete(deviceEnrollmentRequests).where(eq(deviceEnrollmentRequests.id, existing.id))
+  if (existing) {
+    await db.delete(deviceEnrollmentRequests).where(eq(deviceEnrollmentRequests.id, existing.id))
+  }
   const [request] = await db
     .insert(deviceEnrollmentRequests)
     .values({
@@ -44,7 +52,9 @@ export const announceEnrollment = async (pairingCode: string, claimSecret: strin
 }
 
 export const approveEnrollment = async (name: string, pairingCode: string, boardModel: 'ESP32-S3-RLCD-4.2') => {
-  if (!db) throw new Error('database_unavailable')
+  if (!db) {
+    throw new Error('database_unavailable')
+  }
   const [request] = await db
     .select()
     .from(deviceEnrollmentRequests)
@@ -56,7 +66,9 @@ export const approveEnrollment = async (name: string, pairingCode: string, board
       ),
     )
     .limit(1)
-  if (!request || request.board_model !== boardModel) throw new Error('pairing_code_invalid_or_expired')
+  if (!request || request.board_model !== boardModel) {
+    throw new Error('pairing_code_invalid_or_expired')
+  }
   const deviceId = `deck-${randomBytes(6).toString('hex')}`
   const mqttPassword = randomBytes(32).toString('base64url')
   await db.transaction(async (transaction) => {
@@ -77,7 +89,9 @@ export const approveEnrollment = async (name: string, pairingCode: string, board
 }
 
 export const claimEnrollment = async (pairingCode: string, claimSecret: string) => {
-  if (!db) throw new Error('database_unavailable')
+  if (!db) {
+    throw new Error('database_unavailable')
+  }
   const [request] = await db
     .select()
     .from(deviceEnrollmentRequests)
@@ -89,10 +103,16 @@ export const claimEnrollment = async (pairingCode: string, claimSecret: string) 
       ),
     )
     .limit(1)
-  if (!request) throw new Error('pairing_code_invalid_or_expired')
-  if (!request.claimed_device_id) return { status: 'pending' as const }
+  if (!request) {
+    throw new Error('pairing_code_invalid_or_expired')
+  }
+  if (!request.claimed_device_id) {
+    return { status: 'pending' as const }
+  }
   const [device] = await db.select().from(devices).where(eq(devices.id, request.claimed_device_id)).limit(1)
-  if (!device?.mqtt_password_ciphertext || !device.mqtt_username) throw new Error('enrollment_credentials_unavailable')
+  if (!device?.mqtt_password_ciphertext || !device.mqtt_username) {
+    throw new Error('enrollment_credentials_unavailable')
+  }
   const { mqtt_password: mqttPassword } = decryptSecret(device.mqtt_password_ciphertext)
   await db.update(devices).set({ status: 'offline' }).where(eq(devices.id, device.id))
   return {

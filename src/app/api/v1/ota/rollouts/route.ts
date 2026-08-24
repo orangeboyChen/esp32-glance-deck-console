@@ -1,26 +1,23 @@
 import { eq, inArray } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
-import { z } from 'zod'
-
 import { requireApiScope } from '@/server/auth/auth'
 import { db } from '@/server/database/db'
 import { devices, firmwareReleases, otaJobs } from '@/server/database/schema'
 import { createOtaNonce } from '@/server/firmware/ota'
-
-const rolloutSchema = z.object({
-  firmware_release_id: z.uuid(),
-  device_ids: z
-    .array(z.string().regex(/^[A-Za-z0-9_-]{1,64}$/))
-    .min(1)
-    .max(100),
-  percentage: z.number().int().min(1).max(100).default(100),
-})
+import type { RolloutResponse } from '@/lib/api-contracts'
+import { rolloutRequestSchema } from '@/lib/api-contracts'
 
 export const POST = async (request: Request) => {
-  if (!(await requireApiScope(request, 'ota:install'))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  if (!db) return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
-  const body = rolloutSchema.safeParse(await request.json())
-  if (!body.success) return NextResponse.json({ error: 'invalid_rollout', issues: body.error.issues }, { status: 400 })
+  if (!(await requireApiScope(request, 'ota:install'))) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+  if (!db) {
+    return NextResponse.json({ error: 'database_unavailable' }, { status: 503 })
+  }
+  const body = rolloutRequestSchema.safeParse(await request.json())
+  if (!body.success) {
+    return NextResponse.json({ error: 'invalid_rollout', issues: body.error.issues }, { status: 400 })
+  }
   const [release] = await db.select().from(firmwareReleases).where(eq(firmwareReleases.id, body.data.firmware_release_id)).limit(1)
   const candidates = await db
     .select({
@@ -31,8 +28,12 @@ export const POST = async (request: Request) => {
     })
     .from(devices)
     .where(inArray(devices.id, body.data.device_ids))
-  if (!release) return NextResponse.json({ error: 'firmware_release_not_found' }, { status: 404 })
-  if (candidates.length !== body.data.device_ids.length) return NextResponse.json({ error: 'device_not_found' }, { status: 404 })
+  if (!release) {
+    return NextResponse.json({ error: 'firmware_release_not_found' }, { status: 404 })
+  }
+  if (candidates.length !== body.data.device_ids.length) {
+    return NextResponse.json({ error: 'device_not_found' }, { status: 404 })
+  }
   const eligible = candidates.filter(
     (device) =>
       device.board_model === release.board_model &&
@@ -40,10 +41,17 @@ export const POST = async (request: Request) => {
   )
   const targetCount = Math.max(1, Math.ceil((eligible.length * body.data.percentage) / 100))
   const selected = eligible.slice(0, targetCount)
-  if (!selected.length) return NextResponse.json({ error: 'no_power_safe_devices' }, { status: 409 })
+  if (!selected.length) {
+    return NextResponse.json({ error: 'no_power_safe_devices' }, { status: 409 })
+  }
   const jobs = await db
     .insert(otaJobs)
     .values(selected.map((device) => ({ device_id: device.id, firmware_release_id: release.id, nonce: createOtaNonce() })))
     .returning()
-  return NextResponse.json({ jobs, selected_count: selected.length, eligible_count: eligible.length }, { status: 202 })
+  const response: RolloutResponse = {
+    jobs: jobs.map(({ id }) => ({ id })),
+    selected_count: selected.length,
+    eligible_count: eligible.length,
+  }
+  return NextResponse.json(response, { status: 202 })
 }
