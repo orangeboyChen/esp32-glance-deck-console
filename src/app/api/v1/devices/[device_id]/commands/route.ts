@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { requireApiScope } from '@/server/auth'
-import { db } from '@/server/db'
-import { validateDevicePageCommand } from '@/server/device-pages'
-import { deviceCommands, devices } from '@/server/schema'
+import { requireApiScope } from '@/server/auth/auth'
+import { db } from '@/server/database/db'
+import { validateDevicePageCommand } from '@/server/device/device-pages'
+import { deviceCommands, devices } from '@/server/database/schema'
 
 const commandSchema = z.object({
   action: z.enum(['show_page', 'next_page', 'previous_page', 'set_rotation', 'refresh_release', 'enter_maintenance']),

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
-import { currentAdministrator } from '@/server/session'
-import { beginPasskeyRegistration } from '@/server/webauthn'
+import { currentAdministrator } from '@/server/auth/session'
+import { beginPasskeyRegistration } from '@/server/auth/webauthn'
 
 export const POST = async () => {
   const administrator = await currentAdministrator()

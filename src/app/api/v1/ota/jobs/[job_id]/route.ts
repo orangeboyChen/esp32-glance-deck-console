@@ -2,10 +2,10 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { requireApiScope } from '@/server/auth'
-import { db } from '@/server/db'
-import { devices, otaJobs } from '@/server/schema'
-import { createOtaNonce } from '@/server/ota'
+import { requireApiScope } from '@/server/auth/auth'
+import { db } from '@/server/database/db'
+import { devices, otaJobs } from '@/server/database/schema'
+import { createOtaNonce } from '@/server/firmware/ota'
 
 const actionSchema = z.object({ action: z.enum(['cancel', 'rollback']) }).default({ action: 'cancel' })
 

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { requireApiScope } from '@/server/auth'
-import { getDevicePageConfiguration, updateDevicePageConfiguration } from '@/server/device-pages'
+import { requireApiScope } from '@/server/auth/auth'
+import { getDevicePageConfiguration, updateDevicePageConfiguration } from '@/server/device/device-pages'
 
 const pageConfigurationSchema = z.object({
   enabled_page_ids: z

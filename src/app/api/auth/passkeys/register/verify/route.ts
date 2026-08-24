@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import type { RegistrationResponseJSON } from '@simplewebauthn/types'
 import { z } from 'zod'
 
-import { currentAdministrator } from '@/server/session'
-import { finishPasskeyRegistration } from '@/server/webauthn'
+import { currentAdministrator } from '@/server/auth/session'
+import { finishPasskeyRegistration } from '@/server/auth/webauthn'
 
 const responseSchema = z.object({
   id: z.string(),

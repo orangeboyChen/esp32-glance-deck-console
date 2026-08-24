@@ -1,9 +1,9 @@
 import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 
-import { db } from '@/server/db'
-import { alertRules } from '@/server/schema'
-import { currentAdministrator } from '@/server/session'
+import { db } from '@/server/database/db'
+import { alertRules } from '@/server/database/schema'
+import { currentAdministrator } from '@/server/auth/session'
 
 export const DELETE = async (request: Request, { params }: { params: Promise<{ alert_id: string }> }) => {
   if (!(await currentAdministrator())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })

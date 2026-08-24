@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
-import { previewCcSwitchImport } from '@/server/cc-switch-import'
-import { currentAdministrator } from '@/server/session'
+import { previewCcSwitchImport } from '@/server/source/cc-switch-import'
+import { currentAdministrator } from '@/server/auth/session'
 
 export const POST = async (request: Request) => {
   if (!(await currentAdministrator())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 
-import { requireApiScope } from '@/server/auth'
-import { verifyReleaseImageSignature } from '@/server/assets'
-import { db } from '@/server/db'
-import { displayReleases } from '@/server/schema'
+import { requireApiScope } from '@/server/auth/auth'
+import { verifyReleaseImageSignature } from '@/server/display/assets'
+import { db } from '@/server/database/db'
+import { displayReleases } from '@/server/database/schema'
 
 export const GET = async (request: Request, { params }: { params: Promise<{ release_id: string }> }) => {
   const { release_id: releaseId } = await params

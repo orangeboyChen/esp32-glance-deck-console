@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server'
 import { desc } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { db } from '@/server/db'
-import { encryptSecret } from '@/server/secrets'
-import { currentAdministrator } from '@/server/session'
-import { usageSources } from '@/server/schema'
+import { db } from '@/server/database/db'
+import { encryptSecret } from '@/server/security/secrets'
+import { currentAdministrator } from '@/server/auth/session'
+import { usageSources } from '@/server/database/schema'
 
 const sourceSchema = z.object({
   name: z.string().min(1).max(128),

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
-import { currentAdministrator } from '@/server/session'
-import { refreshUsageSource } from '@/server/usage-source'
+import { currentAdministrator } from '@/server/auth/session'
+import { refreshUsageSource } from '@/server/source/usage-source'
 
 export const POST = async (request: Request, { params }: { params: Promise<{ source_id: string }> }) => {
   if (!(await currentAdministrator())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })

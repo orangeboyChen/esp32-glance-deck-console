@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { and, eq, isNull } from 'drizzle-orm'
 
-import { db } from '@/server/db'
-import { currentAdministrator } from '@/server/session'
-import { apiTokens } from '@/server/schema'
+import { db } from '@/server/database/db'
+import { currentAdministrator } from '@/server/auth/session'
+import { apiTokens } from '@/server/database/schema'
 
 export const DELETE = async (request: Request, { params }: { params: Promise<{ token_id: string }> }) => {
   if (!(await currentAdministrator())) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })

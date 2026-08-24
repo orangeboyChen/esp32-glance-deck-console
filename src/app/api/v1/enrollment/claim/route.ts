@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { claimEnrollment } from '@/server/enrollment'
+import { claimEnrollment } from '@/server/device/enrollment'
 
 const claimSchema = z.object({ pairing_code: z.string().regex(/^\d{6}$/), claim_secret: z.string().regex(/^[a-f0-9]{64}$/) })
 

@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { db } from '@/server/db'
-import { currentAdministrator } from '@/server/session'
-import { displayBindings } from '@/server/schema'
+import { db } from '@/server/database/db'
+import { currentAdministrator } from '@/server/auth/session'
+import { displayBindings } from '@/server/database/schema'
 
 const documentSchema = z.object({
   title: z.string().min(1).max(48),

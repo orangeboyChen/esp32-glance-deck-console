@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 import sharp from 'sharp'
 
-import { DISPLAY_HEIGHT, DISPLAY_WIDTH, renderDeviceBitmap, type DisplayDocument } from '../src/server/preview'
+import { DISPLAY_HEIGHT, DISPLAY_WIDTH, renderDeviceBitmap, type DisplayDocument } from '../src/server/display/preview'
 
 const scriptDirectory = fileURLToPath(new URL('.', import.meta.url))
 const imageDirectory = resolve(scriptDirectory, '../../docs/image')

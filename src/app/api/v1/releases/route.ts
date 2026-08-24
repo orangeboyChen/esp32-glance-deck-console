@@ -4,11 +4,11 @@ import { NextResponse } from 'next/server'
 import { asc, desc, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { db } from '@/server/db'
-import { publishDeviceRelease } from '@/server/mqtt'
-import { MONO1_IMAGE_FORMAT, renderDeviceBitmap } from '@/server/preview'
-import { currentAdministrator } from '@/server/session'
-import { devices, displayReleasePages, displayReleases } from '@/server/schema'
+import { db } from '@/server/database/db'
+import { publishDeviceRelease } from '@/server/messaging/mqtt'
+import { MONO1_IMAGE_FORMAT, renderDeviceBitmap } from '@/server/display/preview'
+import { currentAdministrator } from '@/server/auth/session'
+import { devices, displayReleasePages, displayReleases } from '@/server/database/schema'
 
 const progressSchema = z.object({
   value: z.union([z.number(), z.string().max(48)]),

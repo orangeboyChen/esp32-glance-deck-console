@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 
-import { currentAdministrator } from '@/server/session'
-import { db } from '@/server/db'
-import { passkeys } from '@/server/schema'
+import { currentAdministrator } from '@/server/auth/session'
+import { db } from '@/server/database/db'
+import { passkeys } from '@/server/database/schema'
 
 export const GET = async () => {
   const administrator = await currentAdministrator()

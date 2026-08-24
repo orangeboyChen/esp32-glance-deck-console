@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { and, eq } from 'drizzle-orm'
 
-import { requireApiScope } from '@/server/auth'
-import { db } from '@/server/db'
-import { devices, displayReleasePages, displayReleases } from '@/server/schema'
-import { fallbackPreviewSvg } from '@/server/preview'
+import { requireApiScope } from '@/server/auth/auth'
+import { db } from '@/server/database/db'
+import { devices, displayReleasePages, displayReleases } from '@/server/database/schema'
+import { fallbackPreviewSvg } from '@/server/display/preview'
 
 export const GET = async (request: Request, { params }: { params: Promise<{ device_id: string }> }) => {
   if (!(await requireApiScope(request, 'devices:read'))) {

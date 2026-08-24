@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 
-import { requireApiScope } from '@/server/auth'
-import { db } from '@/server/db'
-import { devices, firmwareReleases, otaJobs } from '@/server/schema'
-import { createOtaNonce } from '@/server/ota'
+import { requireApiScope } from '@/server/auth/auth'
+import { db } from '@/server/database/db'
+import { devices, firmwareReleases, otaJobs } from '@/server/database/schema'
+import { createOtaNonce } from '@/server/firmware/ota'
 import { and, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 

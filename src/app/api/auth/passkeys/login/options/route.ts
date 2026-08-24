@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { beginPasskeyAuthentication } from '@/server/webauthn'
+import { beginPasskeyAuthentication } from '@/server/auth/webauthn'
 
 export const POST = async () => {
   try {

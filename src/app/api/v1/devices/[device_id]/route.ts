@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { desc, eq } from 'drizzle-orm'
 
-import { requireApiScope } from '@/server/auth'
-import { db } from '@/server/db'
-import { deviceCommands, devices, displayReleases } from '@/server/schema'
+import { requireApiScope } from '@/server/auth/auth'
+import { db } from '@/server/database/db'
+import { deviceCommands, devices, displayReleases } from '@/server/database/schema'
 
 export const GET = async (request: Request, { params }: { params: Promise<{ device_id: string }> }) => {
   if (!(await requireApiScope(request, 'devices:read'))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })

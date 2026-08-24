@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server'
 import { desc } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { db } from '@/server/db'
-import { currentAdministrator } from '@/server/session'
-import { firmwareReleases } from '@/server/schema'
-import { verifyFirmwareManifest } from '@/server/firmware-signature'
+import { db } from '@/server/database/db'
+import { currentAdministrator } from '@/server/auth/session'
+import { firmwareReleases } from '@/server/database/schema'
+import { verifyFirmwareManifest } from '@/server/firmware/firmware-signature'
 
 const releaseSchema = z.object({
   version: z.string().min(1).max(64),

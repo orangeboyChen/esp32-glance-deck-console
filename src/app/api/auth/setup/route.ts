@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { createInitialAdministrator, createSession } from '@/server/session'
+import { createInitialAdministrator, createSession } from '@/server/auth/session'
 
 const setupSchema = z.object({
   email: z.email(),

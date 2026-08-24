@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { renderDisplayPreview } from '@/server/preview'
-import { currentAdministrator } from '@/server/session'
+import { renderDisplayPreview } from '@/server/display/preview'
+import { currentAdministrator } from '@/server/auth/session'
 
 const progressSchema = z.object({
   value: z.union([z.number(), z.string().max(48)]),

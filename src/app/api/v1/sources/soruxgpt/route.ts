@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { db } from '@/server/db'
-import { encryptSecret } from '@/server/secrets'
-import { currentAdministrator } from '@/server/session'
-import { usageSources } from '@/server/schema'
-import { normalizeSoruxgptToken, publicSoruxgptSource } from '@/server/soruxgpt'
-import { refreshUsageSource } from '@/server/usage-source'
+import { db } from '@/server/database/db'
+import { encryptSecret } from '@/server/security/secrets'
+import { currentAdministrator } from '@/server/auth/session'
+import { usageSources } from '@/server/database/schema'
+import { normalizeSoruxgptToken, publicSoruxgptSource } from '@/server/source/soruxgpt'
+import { refreshUsageSource } from '@/server/source/usage-source'
 
 const soruxgptSchema = z.object({ token: z.string().min(1).max(8192) })
 const sourceName = 'SoruxGPT Codex'

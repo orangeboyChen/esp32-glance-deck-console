@@ -2,10 +2,10 @@ import { desc, inArray } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { requireApiScope } from '@/server/auth'
-import { db } from '@/server/db'
-import { alertRules, devices } from '@/server/schema'
-import { currentAdministrator } from '@/server/session'
+import { requireApiScope } from '@/server/auth/auth'
+import { db } from '@/server/database/db'
+import { alertRules, devices } from '@/server/database/schema'
+import { currentAdministrator } from '@/server/auth/session'
 
 const alertSchema = z.object({
   name: z.string().trim().min(1).max(128),

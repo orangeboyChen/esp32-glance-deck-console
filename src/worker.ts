@@ -1,11 +1,11 @@
-import { dispatchQueuedCommands } from './server/commands'
+import { dispatchQueuedCommands } from './server/device/commands'
 import { inArray, or, and, eq, lt } from 'drizzle-orm'
-import { db } from './server/db'
-import { startDeviceStateConsumer } from './server/mqtt'
-import { dispatchQueuedOtaJobs } from './server/ota'
-import { initializeDatabase } from './server/database-initializer'
-import { usageSources } from './server/schema'
-import { refreshUsageSource } from './server/usage-source'
+import { db } from './server/database/db'
+import { initializeDatabase } from './server/database/database-initializer'
+import { usageSources } from './server/database/schema'
+import { dispatchQueuedOtaJobs } from './server/firmware/ota'
+import { startDeviceStateConsumer } from './server/messaging/mqtt'
+import { refreshUsageSource } from './server/source/usage-source'
 
 const workerName = 'glance-deck-worker'
 

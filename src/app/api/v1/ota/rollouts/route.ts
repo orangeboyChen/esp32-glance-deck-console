@@ -2,10 +2,10 @@ import { eq, inArray } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { requireApiScope } from '@/server/auth'
-import { db } from '@/server/db'
-import { devices, firmwareReleases, otaJobs } from '@/server/schema'
-import { createOtaNonce } from '@/server/ota'
+import { requireApiScope } from '@/server/auth/auth'
+import { db } from '@/server/database/db'
+import { devices, firmwareReleases, otaJobs } from '@/server/database/schema'
+import { createOtaNonce } from '@/server/firmware/ota'
 
 const rolloutSchema = z.object({
   firmware_release_id: z.uuid(),

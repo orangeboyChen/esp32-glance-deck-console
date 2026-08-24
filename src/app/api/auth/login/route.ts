@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { authenticateAdministrator, createSession } from '@/server/session'
+import { authenticateAdministrator, createSession } from '@/server/auth/session'
 
 const loginSchema = z.object({
   email: z.email(),

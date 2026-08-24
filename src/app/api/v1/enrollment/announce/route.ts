@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { announceEnrollment } from '@/server/enrollment'
+import { announceEnrollment } from '@/server/device/enrollment'
 
 const enrollmentSchema = z.object({
   pairing_code: z.string().regex(/^\d{6}$/),

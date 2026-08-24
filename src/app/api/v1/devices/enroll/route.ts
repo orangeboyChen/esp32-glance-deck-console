@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { approveEnrollment } from '@/server/enrollment'
-import { currentAdministrator } from '@/server/session'
+import { approveEnrollment } from '@/server/device/enrollment'
+import { currentAdministrator } from '@/server/auth/session'
 
 const enrollmentSchema = z.object({
   name: z.string().min(1).max(128),

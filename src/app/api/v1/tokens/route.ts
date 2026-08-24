@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { createApiToken, hashSecret } from '@/server/auth'
-import { db } from '@/server/db'
-import { currentAdministrator } from '@/server/session'
-import { apiTokens } from '@/server/schema'
+import { createApiToken, hashSecret } from '@/server/auth/auth'
+import { db } from '@/server/database/db'
+import { currentAdministrator } from '@/server/auth/session'
+import { apiTokens } from '@/server/database/schema'
 import { desc, isNull } from 'drizzle-orm'
 
 const tokenSchema = z.object({

@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "22.10.2",
     "@types/pg": "^8.21.0",
     "@types/react": "19.2.2",
@@ -46,6 +47,8 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.4",
     "prettier": "^3.9.6",
+    "sass": "^1.103.1",
+    "tailwindcss": "^4.3.3",
     "typescript": "5.7.2",
     "typescript-eslint": "^8.67.0"
   }

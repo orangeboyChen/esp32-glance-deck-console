@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { requireApiScope } from '@/server/auth'
+import { requireApiScope } from '@/server/auth/auth'
 
 export const GET = async (request: Request) => {
   if (!(await requireApiScope(request, 'devices:read'))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
