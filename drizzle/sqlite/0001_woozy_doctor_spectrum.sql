@@ -1,0 +1,1 @@
+ALTER TABLE `usage_sources` ADD `last_attempt_at` integer;

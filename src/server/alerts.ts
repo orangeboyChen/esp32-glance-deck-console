@@ -48,14 +48,14 @@ export async function evaluate_alert_rules(source_id: string, values: Record<str
       if (!rule.test_only) {
         const page_id = rule.page_ids[0]
         if (page_id) {
-          await db.insert(device_commands).values(rule.device_ids.map((device_id) => ({ device_id, action: 'show_page', payload: { page_id, alert_rule_id: rule.id, message: rule.message, severity: rule.severity } })))
+          await db.insert(device_commands).values(rule.device_ids.map((device_id: string) => ({ device_id, action: 'show_page', payload: { page_id, alert_rule_id: rule.id, message: rule.message, severity: rule.severity } })))
         }
       }
     }
     if (became_resolved && !rule.test_only) {
       const page_id = rule.page_ids[0]
       if (page_id) {
-        await db.insert(device_commands).values(rule.device_ids.map((device_id) => ({ device_id, action: 'refresh_release', payload: { alert_rule_id: rule.id, reason: 'alert_resolved' } })))
+        await db.insert(device_commands).values(rule.device_ids.map((device_id: string) => ({ device_id, action: 'refresh_release', payload: { alert_rule_id: rule.id, reason: 'alert_resolved' } })))
       }
     }
   }

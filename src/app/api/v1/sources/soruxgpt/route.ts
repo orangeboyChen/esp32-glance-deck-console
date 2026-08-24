@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '@/server/db'
@@ -31,9 +31,8 @@ export async function POST(request: Request) {
     secret_ciphertext: encrypt_secret({ SORUXGPT_TOKEN: token }),
   }
   const { source, existing, refresh_in_progress, previous_source } = await db.transaction(async (transaction) => {
-    await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${source_name}))`)
     const [current] = await transaction.select().from(usage_sources).where(eq(usage_sources.name, source_name)).limit(1)
-    if (current?.status === 'refreshing') return { source: public_soruxgpt_source(current), existing: true, refresh_in_progress: true }
+    if (current?.status === 'refreshing') return { source: public_soruxgpt_source(current as { id: string; name: string }), existing: true, refresh_in_progress: true }
     const updated_source = current
       ? (await transaction.update(usage_sources).set({ ...configuration, status: 'refreshing', last_attempt_at: new Date(), last_error: null }).where(eq(usage_sources.id, current.id)).returning({ id: usage_sources.id, name: usage_sources.name }))[0]
       : (await transaction.insert(usage_sources).values({ ...configuration, status: 'refreshing', last_attempt_at: new Date() }).returning({ id: usage_sources.id, name: usage_sources.name }))[0]

@@ -124,7 +124,7 @@ export async function refresh_usage_source(source_id: string, already_claimed = 
   try {
     const secrets = decrypt_secret(source.secret_ciphertext)
     const source_url = await safe_url(source.base_url, source.request_path)
-    const headers = Object.fromEntries(Object.entries(source.headers).map(([key, value]) => [key, interpolate(value, secrets)]))
+    const headers = Object.fromEntries(Object.entries(source.headers as Record<string, string>).map(([key, value]) => [key, interpolate(value, secrets)]))
     const body = source.body_template ? interpolate(source.body_template, secrets) : undefined
     const response = await fetch_source(source_url, source.method, headers, body)
     if (response.status < 200 || response.status >= 300) throw new Error(`source_http_${response.status}`)

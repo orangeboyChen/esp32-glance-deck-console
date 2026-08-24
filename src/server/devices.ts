@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, inArray, sql } from 'drizzle-orm'
+import { and, count, desc, eq, gte, inArray } from 'drizzle-orm'
 
 import { db } from './db'
 import { alert_rules, devices, display_release_pages, display_releases, ota_jobs, source_snapshots, usage_sources } from './schema'
@@ -48,14 +48,13 @@ export async function list_devices(): Promise<DeviceSummary[]> {
     .leftJoin(display_releases, eq(devices.release_id, display_releases.id))
     .leftJoin(display_release_pages, and(eq(display_release_pages.release_id, display_releases.id), eq(display_release_pages.page_id, devices.active_page_id)))
 
-  const [soruxgpt_snapshot] = await database.select({ values: source_snapshots.values, fetched_at: source_snapshots.fetched_at })
+  const snapshots = await database.select({ values: source_snapshots.values, fetched_at: source_snapshots.fetched_at, mapper: usage_sources.mapper })
     .from(source_snapshots).innerJoin(usage_sources, eq(source_snapshots.source_id, usage_sources.id))
-    .where(and(inArray(usage_sources.status, ['active', 'refreshing']), sql`${usage_sources.mapper}->>'provider' = 'soruxgpt_codex'`))
-    .orderBy(desc(source_snapshots.fetched_at)).limit(1)
+    .where(inArray(usage_sources.status, ['active', 'refreshing']))
+    .orderBy(desc(source_snapshots.fetched_at)).limit(100)
+  const soruxgpt_snapshot = snapshots.find((snapshot) => snapshot.mapper?.provider === 'soruxgpt_codex')
   const fresh_soruxgpt_snapshot = soruxgpt_snapshot && Date.now() - soruxgpt_snapshot.fetched_at.getTime() <= 30 * 60 * 1000 ? soruxgpt_snapshot : null
-  const [latest_snapshot] = fresh_soruxgpt_snapshot ? [] : await database.select({ values: source_snapshots.values })
-    .from(source_snapshots).innerJoin(usage_sources, eq(source_snapshots.source_id, usage_sources.id))
-    .where(inArray(usage_sources.status, ['active', 'refreshing'])).orderBy(desc(source_snapshots.fetched_at)).limit(1)
+  const latest_snapshot = fresh_soruxgpt_snapshot ? undefined : snapshots[0]
   const snapshot = fresh_soruxgpt_snapshot ?? latest_snapshot
 
   return Promise.all(rows.map(async (row) => {

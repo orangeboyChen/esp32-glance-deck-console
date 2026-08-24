@@ -1,6 +1,5 @@
-.DS_Store
-.vscode/
-node_modules/
+.data/
 .next/
 coverage/
-.env*
+node_modules/
+tsconfig.tsbuildinfo

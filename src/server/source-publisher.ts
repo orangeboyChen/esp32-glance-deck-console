@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 
-import { eq, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 
 import { db } from './db'
 import { publish_device_release } from './mqtt'
@@ -69,19 +69,21 @@ export async function publish_source_changes(source_id: string, values: SourceVa
       ? createHash('sha256').update(system_rendered.device_image).digest('hex')
       : undefined
     const assigned = await db.select({ id: devices.id, release_id: devices.release_id })
-      .from(devices).where(sql`${devices.id} = ANY(${binding.device_ids})`)
+      .from(devices).where(inArray(devices.id, binding.device_ids))
     if (assigned.length !== binding.device_ids.length) throw new Error('display_binding_device_not_found')
 
     const existing = assigned.length > 0
       ? await db.select({ id: display_releases.id }).from(display_releases)
-        .where(sql`${display_releases.id} = ANY(${assigned.map((device) => device.release_id).filter(Boolean)}) AND ${display_releases.content_sha256} = ${content_sha256}`)
+        .where(and(inArray(display_releases.id, assigned.map((device) => device.release_id).filter(Boolean)), eq(display_releases.content_sha256, content_sha256)))
         .limit(1)
       : []
     if (existing[0] && assigned.every((device) => device.release_id === existing[0].id)) continue
 
-    const created = await db.transaction(async (transaction) => {
-      const [{ next_version }] = await transaction.select({ next_version: sql<number>`coalesce(max(${display_releases.version}), 0) + 1` }).from(display_releases)
-      const [release] = await transaction.insert(display_releases).values({
+    const created: any = await db.transaction(async (transaction) => {
+      const [latest_release] = await transaction.select({ version: display_releases.version }).from(display_releases)
+        .orderBy(desc(display_releases.version)).limit(1)
+      const next_version = (latest_release?.version ?? 0) + 1
+      const releases = await (transaction.insert(display_releases).values({
         version: next_version,
         page_id: binding.page_id,
         document,
@@ -91,7 +93,8 @@ export async function publish_source_changes(source_id: string, values: SourceVa
         image_width: 400,
         image_height: 300,
         content_sha256,
-      }).returning()
+      }).returning() as Promise<any[]>)
+      const [release] = releases
       const pages = [
         {
           release_id: release.id,
@@ -120,12 +123,12 @@ export async function publish_source_changes(source_id: string, values: SourceVa
         })
       await transaction.insert(display_release_pages).values(pages)
       await transaction.update(devices).set({ release_id: release.id, desired_page_id: binding.page_id, enabled_page_ids: include_system ? [binding.page_id, 'system'] : ['system'] })
-        .where(sql`${devices.id} = ANY(${binding.device_ids})`)
+        .where(inArray(devices.id, binding.device_ids))
       return release
     })
     const base_url = process.env.DEVICE_ASSET_URL ?? process.env.APP_URL
     if (!base_url?.startsWith('https://')) throw new Error('device_asset_url_https_required')
-    await Promise.all(binding.device_ids.map((device_id) => publish_device_release(device_id, {
+    await Promise.all(binding.device_ids.map((device_id: string) => publish_device_release(device_id, {
       id: created.id,
       version: created.version,
       active_page_id: created.page_id,

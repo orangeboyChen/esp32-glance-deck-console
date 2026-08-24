@@ -3,6 +3,7 @@ import { inArray, or, and, eq, lt } from 'drizzle-orm'
 import { db } from './server/db'
 import { start_device_state_consumer } from './server/mqtt'
 import { dispatch_queued_ota_jobs } from './server/ota'
+import { initialize_database } from './server/database-initializer'
 import { usage_sources } from './server/schema'
 import { refresh_usage_source } from './server/usage-source'
 
@@ -27,6 +28,7 @@ async function tick() {
     }))
 }
 
+await initialize_database()
 console.log(`${worker_name}: ready to process command, source, and OTA jobs`)
 start_device_state_consumer()
 await tick()

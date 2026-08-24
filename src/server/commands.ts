@@ -1,6 +1,6 @@
 import { and, asc, eq } from 'drizzle-orm'
 
-import { db } from './db'
+import { database_dialect, db } from './db'
 import { publish_device_command } from './mqtt'
 import { device_commands } from './schema'
 
@@ -9,11 +9,13 @@ export async function dispatch_queued_commands() {
   let dispatched = 0
   for (let index = 0; index < 20; index += 1) {
     const processed = await db.transaction(async (transaction) => {
-      const [command] = await transaction.select().from(device_commands)
+      const query = transaction.select().from(device_commands)
         .where(eq(device_commands.status, 'queued'))
         .orderBy(asc(device_commands.created_at))
         .limit(1)
-        .for('update', { skipLocked: true })
+      const [command] = database_dialect === 'postgresql'
+        ? await (query as any).for('update', { skipLocked: true })
+        : await query
       if (!command) return false
 
       try {

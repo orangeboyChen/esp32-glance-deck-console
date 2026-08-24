@@ -10,12 +10,12 @@
     "test": "bun test",
     "render:display-doc-images": "bun scripts/render-display-doc-images.ts",
     "test:coverage": "bun test --max-concurrency 1 --isolate --coverage --coverage-reporter=lcov && bun scripts/check-coverage.ts coverage/lcov.info 90",
-    "worker": "bun --bun src/worker.ts",
-    "db:migrate": "bun --bun src/server/migrate.ts"
+    "worker": "bun --bun src/worker.ts"
   },
   "dependencies": {
     "@fontsource/noto-sans-jp": "^5.3.0",
     "@fontsource/noto-sans-sc": "^5.3.0",
+    "@libsql/client": "^0.17.4",
     "@lobehub/ui": "5.29.1",
     "@resvg/resvg-js": "^2.6.2",
     "@simplewebauthn/server": "^13.3.2",

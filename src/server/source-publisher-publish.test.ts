@@ -8,6 +8,9 @@ const select = mock(() => ({
       limit: async () => select_results.shift() ?? [],
       then: (resolve: (value: unknown[]) => unknown) => Promise.resolve(select_results.shift() ?? []).then(resolve),
     }),
+    orderBy: () => ({
+      limit: async () => select_results.shift() ?? [],
+    }),
     then: (resolve: (value: unknown[]) => unknown) => Promise.resolve(select_results.shift() ?? []).then(resolve),
   }),
 }))
@@ -39,7 +42,7 @@ describe('source-bound display publication', () => {
       [{ source_id: 'source-1', page_id: 'usage', device_ids: ['desk-a', 'desk-b'], document_template: { title: '{{plan_name}}', lines: [{ label: 'Today', value: '{{used}}%' }] } }],
       [{ id: 'desk-a', release_id: 'old-a' }, { id: 'desk-b', release_id: 'old-b' }],
       [],
-      [{ next_version: 4 }],
+      [{ version: 3 }],
     )
     expect(await publish_source_changes('source-1', { plan_name: 'Pro', used: 72 })).toBe(2)
     expect(transaction).toHaveBeenCalledTimes(1)

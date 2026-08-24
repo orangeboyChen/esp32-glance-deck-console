@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto'
 
 import argon2 from 'argon2'
-import { and, eq, gt, sql } from 'drizzle-orm'
+import { and, eq, gt } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
@@ -22,7 +22,6 @@ export async function create_initial_administrator(email: string, password: stri
   const password_hash = await argon2.hash(password, { type: argon2.argon2id })
 
   return db.transaction(async (transaction) => {
-    await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext('glance_deck_initial_administrator'))`)
     const [existing_administrator] = await transaction.select({ id: administrators.id }).from(administrators).limit(1)
     if (existing_administrator) throw new Error('administrator_exists')
 

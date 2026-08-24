@@ -19,8 +19,6 @@ services:
         condition: service_healthy
       mosquitto:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--spider", "--quiet", "http://127.0.0.1:3000/api/health"]
@@ -43,24 +41,13 @@ services:
       APP_MASTER_KEY: ${APP_MASTER_KEY:-MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE}
       DEVICE_ASSET_SIGNING_KEY: ${DEVICE_ASSET_SIGNING_KEY:-development-asset-key-change-me}
     depends_on:
+      app:
+        condition: service_healthy
       postgres:
         condition: service_healthy
       mosquitto:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
     restart: unless-stopped
-
-  migrate:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: bun db:migrate
-    environment:
-      DATABASE_URL: postgresql://glance_deck:glance_deck@postgres:5432/glance_deck
-    depends_on:
-      postgres:
-        condition: service_healthy
 
   postgres:
     image: postgres:17-alpine

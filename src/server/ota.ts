@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto'
 
 import { and, asc, eq } from 'drizzle-orm'
 
-import { db } from './db'
+import { database_dialect, db } from './db'
 import { publish_device_ota } from './mqtt'
 import { firmware_releases, ota_jobs } from './schema'
 
@@ -11,10 +11,12 @@ export async function dispatch_queued_ota_jobs() {
   let dispatched = 0
   for (let index = 0; index < 10; index += 1) {
     const processed = await db.transaction(async (transaction) => {
-      const [job] = await transaction.select({ id: ota_jobs.id, device_id: ota_jobs.device_id, nonce: ota_jobs.nonce, version: firmware_releases.version, manifest_url: firmware_releases.manifest_url, image_sha256: firmware_releases.image_sha256 })
+      const query = transaction.select({ id: ota_jobs.id, device_id: ota_jobs.device_id, nonce: ota_jobs.nonce, version: firmware_releases.version, manifest_url: firmware_releases.manifest_url, image_sha256: firmware_releases.image_sha256 })
         .from(ota_jobs).innerJoin(firmware_releases, eq(ota_jobs.firmware_release_id, firmware_releases.id))
         .where(eq(ota_jobs.status, 'queued')).orderBy(asc(ota_jobs.created_at)).limit(1)
-        .for('update', { skipLocked: true })
+      const [job] = database_dialect === 'postgresql'
+        ? await (query as any).for('update', { skipLocked: true })
+        : await query
       if (!job) return false
 
       try {

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 
 import { NextResponse } from 'next/server'
-import { asc, eq, sql } from 'drizzle-orm'
+import { asc, desc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '@/server/db'
@@ -39,7 +39,9 @@ export async function POST(request: Request) {
   const active_page = rendered_pages.find((page) => page.page_id === body.data.active_page_id)
   if (!active_page) return NextResponse.json({ error: 'invalid_release' }, { status: 400 })
   const release = await db.transaction(async (transaction) => {
-    const [{ next_version }] = await transaction.select({ next_version: sql<number>`coalesce(max(${display_releases.version}), 0) + 1` }).from(display_releases)
+    const [latest_release] = await transaction.select({ version: display_releases.version }).from(display_releases)
+      .orderBy(desc(display_releases.version)).limit(1)
+    const next_version = (latest_release?.version ?? 0) + 1
     const [created] = await transaction.insert(display_releases).values({
       version: next_version,
       page_id: active_page.page_id,
@@ -63,9 +65,9 @@ export async function POST(request: Request) {
       image_height: 300,
       content_sha256: page.content_sha256,
     })))
-    const targets = await transaction.select({ id: devices.id }).from(devices).where(sql`${devices.id} = ANY(${body.data.device_ids})`)
+    const targets = await transaction.select({ id: devices.id }).from(devices).where(inArray(devices.id, body.data.device_ids))
     if (targets.length !== body.data.device_ids.length) throw new Error('device_not_found')
-    await transaction.update(devices).set({ release_id: created.id, desired_page_id: body.data.active_page_id, enabled_page_ids: rendered_pages.map((page) => page.page_id) }).where(sql`${devices.id} = ANY(${body.data.device_ids})`)
+    await transaction.update(devices).set({ release_id: created.id, desired_page_id: body.data.active_page_id, enabled_page_ids: rendered_pages.map((page) => page.page_id) }).where(inArray(devices.id, body.data.device_ids))
     return { created, targets }
   })
   const metadata = {
