@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect } from 'react'
 
 import { ConsolePageHeader } from '@/app/_components/console-page-header'
+import { Api } from '@/lib/api-client'
 
 import {
   settingsErrorAtom,
@@ -73,10 +74,7 @@ export const SettingsManager = () => {
     setLoading(true)
     setError(null)
     try {
-      const [tokenResponse, passkeyResponse] = await Promise.all([
-        fetch('/api/v1/tokens', { cache: 'no-store' }),
-        fetch('/api/auth/passkeys', { cache: 'no-store' }),
-      ])
+      const [tokenResponse, passkeyResponse] = await Promise.all([Api.listTokens(), Api.listPasskeys()])
       if (!tokenResponse.ok || !passkeyResponse.ok) throw new Error('loadFailed')
       setTokens(((await tokenResponse.json()) as { tokens: ApiToken[] }).tokens)
       setPasskeys(((await passkeyResponse.json()) as { passkeys: Passkey[] }).passkeys)
@@ -94,11 +92,7 @@ export const SettingsManager = () => {
     if (!label.trim() || scopes.length === 0) return
     setSaving(true)
     try {
-      const response = await fetch('/api/v1/tokens', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ label: label.trim(), scopes }),
-      })
+      const response = await Api.createToken({ label: label.trim(), scopes })
       const payload = (await response.json()) as NewToken | { error?: string }
       if (!response.ok || !('token' in payload)) throw new Error('tokenCreateFailed')
       setNewToken(payload)
@@ -113,7 +107,7 @@ export const SettingsManager = () => {
   }
   const revokeToken = async (token: ApiToken) => {
     try {
-      const response = await fetch(`/api/v1/tokens/${token.id}`, { method: 'DELETE' })
+      const response = await Api.deleteToken(token.id)
       if (!response.ok) throw new Error()
       setTokens((current) => current.filter((item) => item.id !== token.id))
       toast.success(translate('tokenRevoked'))
@@ -125,7 +119,7 @@ export const SettingsManager = () => {
     setPasskeyBusy(true)
     try {
       if (!window.PublicKeyCredential) throw new Error('passkeyUnsupported')
-      const optionsResponse = await fetch('/api/auth/passkeys/register/options', { method: 'POST' })
+      const optionsResponse = await Api.registerPasskeyOptions()
       if (!optionsResponse.ok) throw new Error('passkeyRegisterFailed')
       const options = (await optionsResponse.json()) as PublicKeyCredentialCreationOptions & {
         challenge: string
@@ -141,11 +135,7 @@ export const SettingsManager = () => {
         },
       })
       if (!credential) throw new Error('passkeyRegisterFailed')
-      const verifyResponse = await fetch('/api/auth/passkeys/register/verify', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(serialiseCredential(credential)),
-      })
+      const verifyResponse = await Api.registerPasskeyVerify(serialiseCredential(credential))
       if (!verifyResponse.ok) throw new Error('passkeyRegisterFailed')
       toast.success(translate('passkeyAdded'))
       await load()
@@ -160,7 +150,7 @@ export const SettingsManager = () => {
     if (!removePasskey) return
     setPasskeyBusy(true)
     try {
-      const response = await fetch(`/api/auth/passkeys/${removePasskey.id}`, { method: 'DELETE' })
+      const response = await Api.deletePasskey(removePasskey.id)
       if (!response.ok) throw new Error()
       setPasskeys((current) => current.filter((item) => item.id !== removePasskey.id))
       setRemovePasskey(null)

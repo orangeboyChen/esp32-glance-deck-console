@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect } from 'react'
 
 import { ConsolePageHeader } from '@/app/_components/console-page-header'
+import { Api } from '@/lib/api-client'
 
 import {
   firmwareDevicesAtom,
@@ -42,10 +43,7 @@ export const FirmwareManager = () => {
     setLoading(true)
     setError(null)
     try {
-      const [releaseResponse, deviceResponse] = await Promise.all([
-        fetch('/api/v1/firmware/releases', { cache: 'no-store' }),
-        fetch('/api/v1/devices', { cache: 'no-store' }),
-      ])
+      const [releaseResponse, deviceResponse] = await Promise.all([Api.listFirmwareReleases(), Api.listDevices()])
       if (!releaseResponse.ok || !deviceResponse.ok) throw new Error('load_failed')
       setReleases(((await releaseResponse.json()) as { releases: FirmwareRelease[] }).releases)
       setDevices(((await deviceResponse.json()) as { devices: Device[] }).devices)
@@ -63,14 +61,10 @@ export const FirmwareManager = () => {
     if (!rolloutReleaseId || !rolloutDeviceIds.length) return
     setRolloutBusy(true)
     try {
-      const response = await fetch('/api/v1/ota/rollouts', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          firmware_release_id: rolloutReleaseId,
-          device_ids: rolloutDeviceIds,
-          percentage: Number(rolloutPercentage),
-        }),
+      const response = await Api.createRollout({
+        firmware_release_id: rolloutReleaseId,
+        device_ids: rolloutDeviceIds,
+        percentage: Number(rolloutPercentage),
       })
       const payload = (await response.json()) as { error?: string; selected_count?: number }
       if (!response.ok) throw new Error(payload.error || 'rolloutFailed')
@@ -89,11 +83,7 @@ export const FirmwareManager = () => {
     if (!selection) return
     setInstalling(true)
     try {
-      const response = await fetch(`/api/v1/devices/${selection.device.id}/ota`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ firmware_release_id: selection.release.id }),
-      })
+      const response = await Api.installOta(selection.device.id, { firmware_release_id: selection.release.id })
       const payload = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(payload.error || 'ota_failed')
       toast.success(translate('queued', { device: selection.device.name, version: selection.release.version }))
@@ -110,11 +100,7 @@ export const FirmwareManager = () => {
   const updateJob = async (device: Device, action: 'cancel' | 'rollback') => {
     if (!device.ota_job_id) return
     try {
-      const response = await fetch(`/api/v1/ota/jobs/${device.ota_job_id}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action }),
-      })
+      const response = await Api.updateOtaJob(device.ota_job_id, { action })
       const payload = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(payload.error || 'otaJobActionFailed')
       toast.success(translate(action === 'cancel' ? 'cancelled' : 'rollbackQueued'))

@@ -9,6 +9,7 @@ import type { FormEvent } from 'react'
 import { useCallback, useEffect } from 'react'
 
 import { ConsolePageHeader } from '@/app/_components/console-page-header'
+import { Api } from '@/lib/api-client'
 
 import {
   sourceBaseUrlAtom,
@@ -61,7 +62,7 @@ export const SourcesManager = () => {
   const loadSources = useCallback(async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/v1/sources', { cache: 'no-store' })
+      const response = await Api.listSources()
       if (!response.ok) throw new Error('source_load_failed')
       setSources(((await response.json()) as { sources: Source[] }).sources)
     } catch {
@@ -79,11 +80,7 @@ export const SourcesManager = () => {
     setSoruxgptConnecting(true)
     setSoruxgptError(null)
     try {
-      const response = await fetch('/api/v1/sources/soruxgpt', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ token: soruxgptToken.trim() }),
-      })
+      const response = await Api.connectSoruxgpt({ token: soruxgptToken.trim() })
       const payload = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(payload.error || 'soruxgptConnectFailed')
       setSoruxgptToken('')
@@ -103,11 +100,7 @@ export const SourcesManager = () => {
     setImporting(true)
     try {
       const exported = JSON.parse(importText) as unknown
-      const response = await fetch('/api/v1/sources/cc-switch/preview', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(exported),
-      })
+      const response = await Api.previewCcSwitchImport(exported)
       const payload = (await response.json()) as { preview?: ImportPreview; error?: string }
       if (!response.ok || !payload.preview) throw new Error(payload.error || 'cc_switch_export_invalid')
       const value = payload.preview
@@ -144,11 +137,7 @@ export const SourcesManager = () => {
         mapper: JSON.parse(mapper),
         refresh_interval_seconds: Number(interval),
       }
-      const response = await fetch('/api/v1/sources', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
+      const response = await Api.createSource(payload)
       const body = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(body.error || 'source_create_failed')
       toast.success(translate('sourceSaved'))
@@ -166,7 +155,7 @@ export const SourcesManager = () => {
   const testSource = async (sourceId: string) => {
     setTestingId(sourceId)
     try {
-      const response = await fetch(`/api/v1/sources/${sourceId}/test`, { method: 'POST' })
+      const response = await Api.testSource(sourceId)
       if (!response.ok) throw new Error('source_test_failed')
       toast.success(translate('testSucceeded'))
       await loadSources()

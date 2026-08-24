@@ -12,6 +12,7 @@ import {
   enrollmentSubmittingAtom,
 } from '@/app/_components/dashboard/enrollment-state'
 import { useRouter } from '@/i18n/navigation'
+import { Api } from '@/lib/api-client'
 
 type EnrollmentDialogProps = {
   open: boolean
@@ -46,11 +47,7 @@ export const EnrollmentDialog = ({ open, onClose }: EnrollmentDialogProps) => {
     setError(null)
     setSubmitting(true)
     try {
-      const response = await fetch('/api/v1/devices/enroll', {
-        body: JSON.stringify({ name: name.trim(), pairing_code: pairingCode, board_model: 'ESP32-S3-RLCD-4.2' }),
-        headers: { 'content-type': 'application/json' },
-        method: 'POST',
-      })
+      const response = await Api.enrollDevice({ name: name.trim(), pairing_code: pairingCode, board_model: 'ESP32-S3-RLCD-4.2' })
       const payload = (await response.json()) as { error?: string; device_id?: string }
       if (!response.ok) throw new Error(payload.error || 'enrollment_failed')
       toast.success(translate('deviceAdded', { id: payload.device_id || '' }))

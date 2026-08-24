@@ -6,6 +6,7 @@ import { useAtom } from 'jotai'
 import { KeyRound, LogIn } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
+import { Api } from '@/lib/api-client'
 
 import {
   loginBusyAtom,
@@ -44,11 +45,7 @@ export const LoginManager = () => {
     setBusy(true)
     setError(null)
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      })
+      const response = await Api.login({ email, password })
       if (!response.ok) throw new Error('invalidCredentials')
       finish()
     } catch (loginError) {
@@ -63,7 +60,7 @@ export const LoginManager = () => {
     setError(null)
     try {
       if (!window.PublicKeyCredential) throw new Error('passkeyUnsupported')
-      const optionsResponse = await fetch('/api/auth/passkeys/login/options', { method: 'POST' })
+      const optionsResponse = await Api.loginPasskeyOptions()
       const options = (await optionsResponse.json()) as {
         challenge: string
         allowCredentials?: Array<{ id: string; type: 'public-key'; transports?: AuthenticatorTransport[] }>
@@ -78,21 +75,17 @@ export const LoginManager = () => {
       })) as PublicKeyCredential | null
       if (!credential) throw new Error('loginFailed')
       const response = credential.response as AuthenticatorAssertionResponse
-      const verifyResponse = await fetch('/api/auth/passkeys/login/verify', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          id: credential.id,
-          rawId: encodeBase64url(credential.rawId),
-          type: credential.type,
-          response: {
-            clientDataJSON: encodeBase64url(response.clientDataJSON),
-            authenticatorData: encodeBase64url(response.authenticatorData),
-            signature: encodeBase64url(response.signature),
-            userHandle: response.userHandle ? encodeBase64url(response.userHandle) : undefined,
-          },
-          clientExtensionResults: credential.getClientExtensionResults(),
-        }),
+      const verifyResponse = await Api.loginPasskeyVerify({
+        id: credential.id,
+        rawId: encodeBase64url(credential.rawId),
+        type: credential.type,
+        response: {
+          clientDataJSON: encodeBase64url(response.clientDataJSON),
+          authenticatorData: encodeBase64url(response.authenticatorData),
+          signature: encodeBase64url(response.signature),
+          userHandle: response.userHandle ? encodeBase64url(response.userHandle) : undefined,
+        },
+        clientExtensionResults: credential.getClientExtensionResults(),
       })
       if (!verifyResponse.ok) throw new Error('loginFailed')
       finish()
@@ -165,11 +158,7 @@ export const SetupManager = () => {
     setBusy(true)
     setError(null)
     try {
-      const response = await fetch('/api/auth/setup', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      })
+      const response = await Api.setup({ email, password })
       if (!response.ok) throw new Error('setupFailed')
       router.replace('/')
     } catch (setupError) {

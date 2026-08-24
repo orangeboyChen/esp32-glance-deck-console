@@ -8,6 +8,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect } from 'react'
 
 import { ConsolePageHeader } from '@/app/_components/console-page-header'
+import { Api } from '@/lib/api-client'
 
 import {
   displayActivePageIdAtom,
@@ -45,10 +46,7 @@ export const DisplayManager = () => {
 
   const loadData = useCallback(async () => {
     try {
-      const [deviceResponse, releaseResponse] = await Promise.all([
-        fetch('/api/v1/devices', { cache: 'no-store' }),
-        fetch('/api/v1/releases', { cache: 'no-store' }),
-      ])
+      const [deviceResponse, releaseResponse] = await Promise.all([Api.listDevices(), Api.listReleases()])
       if (!deviceResponse.ok || !releaseResponse.ok) throw new Error('load_failed')
       setDevices(((await deviceResponse.json()) as { devices: Device[] }).devices)
       setReleases(((await releaseResponse.json()) as { releases: Release[] }).releases.slice(-10).reverse())
@@ -101,11 +99,7 @@ export const DisplayManager = () => {
     setPreviewLoading(true)
     setError(null)
     try {
-      const response = await fetch('/api/v1/releases/preview', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(activePage.document),
-      })
+      const response = await Api.previewRelease(activePage.document)
       const body = (await response.json()) as { preview_svg?: string; error?: string }
       if (!response.ok || !body.preview_svg) throw new Error(body.error || 'preview_failed')
       setPreviewSvg(body.preview_svg)
@@ -119,11 +113,7 @@ export const DisplayManager = () => {
     if (!pages.every((page) => page.page_id && page.document.title.trim()) || !selectedDevices.length) return
     setPublishing(true)
     try {
-      const response = await fetch('/api/v1/releases', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ active_page_id: activePageId, pages, device_ids: selectedDevices }),
-      })
+      const response = await Api.publishRelease({ active_page_id: activePageId, pages, device_ids: selectedDevices })
       const body = (await response.json()) as { error?: string; failed_devices?: string[] }
       if (!response.ok) throw new Error(body.error || 'publish_failed')
       toast.success(

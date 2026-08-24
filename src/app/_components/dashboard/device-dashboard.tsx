@@ -23,6 +23,7 @@ import { useEffect } from 'react'
 import { deviceNeedsAttention } from './device-attention'
 import { DevicePreview } from './device-preview'
 import { EnrollmentDialog } from './enrollment-dialog'
+import { Api } from '@/lib/api-client'
 import {
   beginDeviceCommandAtom,
   commandFeedbackAtom,
@@ -131,7 +132,7 @@ export const DeviceDashboard = ({ devices, summary }: DeviceDashboardProps) => {
     }
     let cancelled = false
     setPageLoading(true)
-    void fetch(`/api/v1/devices/${selectedDeviceId}/pages`, { cache: 'no-store' })
+    void Api.getDevicePages(selectedDeviceId)
       .then(async (response) => (response.ok ? (response.json() as Promise<DevicePageConfiguration>) : null))
       .then((configuration) => {
         if (!cancelled) setPageConfiguration(configuration)
@@ -174,10 +175,9 @@ export const DeviceDashboard = ({ devices, summary }: DeviceDashboardProps) => {
     if (!selectedDeviceId || !pageConfiguration) return
     setPageSaving(true)
     try {
-      const response = await fetch(`/api/v1/devices/${selectedDeviceId}/pages`, {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ enabled_page_ids: pageConfiguration.enabled_page_ids, desired_page_id: pageConfiguration.desired_page_id }),
+      const response = await Api.updateDevicePages(selectedDeviceId, {
+        enabled_page_ids: pageConfiguration.enabled_page_ids,
+        desired_page_id: pageConfiguration.desired_page_id,
       })
       if (!response.ok) throw new Error('page_configuration_rejected')
       setPageConfiguration((await response.json()) as DevicePageConfiguration)
@@ -192,7 +192,7 @@ export const DeviceDashboard = ({ devices, summary }: DeviceDashboardProps) => {
   const refreshPreview = async (device: DeviceSummary) => {
     beginCommand(device.id)
     try {
-      const response = await fetch(`/api/v1/devices/${device.id}/preview`, { cache: 'no-store' })
+      const response = await Api.previewDevice(device.id)
       if (!response.ok) throw new Error(translate('previewRejected'))
       const previewSvg = await response.text()
       setPreviewSvgByDevice((previews) => ({ ...previews, [device.id]: previewSvg }))

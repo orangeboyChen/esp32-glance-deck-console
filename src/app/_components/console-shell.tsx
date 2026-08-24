@@ -7,6 +7,7 @@ import { Bell, Cpu, Database, LogOut, Monitor, PanelsTopLeft, Settings } from 'l
 import { useLocale, useTranslations } from 'next-intl'
 import { type ReactNode } from 'react'
 import { loggingOutAtom } from '@/app/_components/console-shell-state'
+import { Api } from '@/lib/api-client'
 import { usePathname, useRouter } from '@/i18n/navigation'
 
 type ConsoleShellProps = { children: ReactNode }
@@ -39,11 +40,7 @@ export const ConsoleShell = ({ children }: ConsoleShellProps) => {
 
   const navigate = (href: string) => router.push(href)
   const changeLocale = async (value: string) => {
-    const response = await fetch('/api/preferences/locale', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ locale: value }),
-    })
+    const response = await Api.setLocale(value)
     if (!response.ok) {
       toast.error(translate('logoutFailed'))
       return
@@ -53,7 +50,7 @@ export const ConsoleShell = ({ children }: ConsoleShellProps) => {
   const logout = async () => {
     setLoggingOut(true)
     try {
-      const response = await fetch('/api/auth/logout', { method: 'POST' })
+      const response = await Api.logout()
       if (!response.ok) throw new Error('logout_failed')
       router.replace('/login')
       router.refresh()

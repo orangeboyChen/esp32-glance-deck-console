@@ -9,6 +9,7 @@ import type { FormEvent } from 'react'
 import { useCallback, useEffect } from 'react'
 
 import { ConsolePageHeader } from '@/app/_components/console-page-header'
+import { Api } from '@/lib/api-client'
 
 import {
   alertDeviceIdsAtom,
@@ -56,11 +57,7 @@ export const AlertsManager = () => {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [alertsResponse, sourcesResponse, devicesResponse] = await Promise.all([
-        fetch('/api/v1/alerts', { cache: 'no-store' }),
-        fetch('/api/v1/sources', { cache: 'no-store' }),
-        fetch('/api/v1/devices', { cache: 'no-store' }),
-      ])
+      const [alertsResponse, sourcesResponse, devicesResponse] = await Promise.all([Api.listAlerts(), Api.listSources(), Api.listDevices()])
       if (!alertsResponse.ok || !sourcesResponse.ok || !devicesResponse.ok) throw new Error('load_failed')
       setAlerts(((await alertsResponse.json()) as { rules: AlertRule[] }).rules)
       setSources(((await sourcesResponse.json()) as { sources: Source[] }).sources)
@@ -87,25 +84,21 @@ export const AlertsManager = () => {
     setError(null)
     setSaving(true)
     try {
-      const response = await fetch('/api/v1/alerts', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          source_id: sourceId,
-          field,
-          operator,
-          threshold: threshold.trim(),
-          device_ids: deviceIds,
-          page_ids: pageIds
-            .split(',')
-            .map((item) => item.trim())
-            .filter(Boolean),
-          severity,
-          message: message.trim() || name.trim(),
-          test_only: testOnly,
-          enabled: true,
-        }),
+      const response = await Api.createAlert({
+        name: name.trim(),
+        source_id: sourceId,
+        field,
+        operator,
+        threshold: threshold.trim(),
+        device_ids: deviceIds,
+        page_ids: pageIds
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
+        severity,
+        message: message.trim() || name.trim(),
+        test_only: testOnly,
+        enabled: true,
       })
       const payload = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(payload.error || 'save_failed')
@@ -123,7 +116,7 @@ export const AlertsManager = () => {
   }
 
   const remove = async (id: string) => {
-    const response = await fetch(`/api/v1/alerts/${id}`, { method: 'DELETE' })
+    const response = await Api.deleteAlert(id)
     if (!response.ok) {
       toast.error(translate('deleteFailed'))
       return
