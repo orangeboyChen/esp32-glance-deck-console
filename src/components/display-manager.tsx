@@ -1,44 +1,31 @@
 'use client'
 
 import { Block, Button, Checkbox, Empty, Flexbox, Input, Modal, Segmented, Text, TextArea, toast } from '@lobehub/ui'
-import { atom, useAtom } from 'jotai'
+import { useAtom } from 'jotai'
 import { BatteryMedium, ChartNoAxesCombined, Eye, House, Monitor, PanelsTopLeft, Plus, Send, Trash2, Wifi } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect } from 'react'
 
 import { ConsolePageHeader } from './console-page-header'
 
-type DisplayIcon = 'usage' | 'battery' | 'wifi' | 'system' | 'home'
-type Progress = { value: number; max: number; label?: string; unit?: string }
-type Document = {
-  title: string
-  subtitle?: string
-  icon?: DisplayIcon
-  progress?: Progress
-  progresses?: Progress[]
-  lines?: Array<{ label: string; value: string }>
-}
-type Page = { page_id: string; document: Document }
-type Device = { id: string; name: string; board_model: string; status: string }
-type Release = { id: string; version: number; page_id: string; created_at: string }
-
-const newPage = (index: number): Page => ({ page_id: `page-${index}`, document: { title: '', subtitle: '', lines: [] } })
-const systemPage: Page = {
-  page_id: 'system',
-  document: { title: 'System', subtitle: 'Last verified page retained', icon: 'system', lines: [] },
-}
-
-const displayPagesAtom = atom<Page[]>([newPage(1), systemPage])
-const displayActivePageIdAtom = atom('page-1')
-const displayLinesTextAtom = atom('[]')
-const displayDevicesAtom = atom<Device[]>([])
-const displaySelectedDevicesAtom = atom<string[]>([])
-const displayReleasesAtom = atom<Release[]>([])
-const displayPreviewSvgAtom = atom<string | null>(null)
-const displayPreviewLoadingAtom = atom(false)
-const displayPublishingAtom = atom(false)
-const displayConfirmOpenAtom = atom(false)
-const displayErrorAtom = atom<string | null>(null)
+import {
+  displayActivePageIdAtom,
+  displayConfirmOpenAtom,
+  displayDevicesAtom,
+  displayErrorAtom,
+  displayLinesTextAtom,
+  displayPagesAtom,
+  displayPreviewLoadingAtom,
+  displayPreviewSvgAtom,
+  displayPublishingAtom,
+  displayReleasesAtom,
+  displaySelectedDevicesAtom,
+  newPage,
+  systemPage,
+  type DisplayDocument as Document,
+  type Device,
+  type Release,
+} from '@/state/display'
 
 export const DisplayManager = () => {
   const translate = useTranslations('Displays')

@@ -2,26 +2,27 @@
 
 import { Alert, Block, Button, Flexbox, Input, Modal, Text, toast } from '@lobehub/ui'
 import { KeyRound, Plus, ShieldCheck, Trash2 } from 'lucide-react'
-import { atom, useAtom } from 'jotai'
+import { useAtom } from 'jotai'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect } from 'react'
 
 import { ConsolePageHeader } from './console-page-header'
 
-type ApiToken = { id: string; label: string; scopes: string[]; created_at: string }
-type Passkey = { id: string; created_at: string; transports: string[] | null }
-type NewToken = { token: string; record: ApiToken }
-
-const tokenLabelAtom = atom('Home Assistant')
-const tokenScopesAtom = atom<string[]>(['devices:read', 'devices:command', 'alerts:read'])
-const settingsTokensAtom = atom<ApiToken[]>([])
-const settingsPasskeysAtom = atom<Passkey[]>([])
-const settingsLoadingAtom = atom(true)
-const settingsSavingAtom = atom(false)
-const settingsNewTokenAtom = atom<NewToken | null>(null)
-const settingsRemovePasskeyAtom = atom<Passkey | null>(null)
-const settingsPasskeyBusyAtom = atom(false)
-const settingsErrorAtom = atom<string | null>(null)
+import {
+  settingsErrorAtom,
+  settingsLoadingAtom,
+  settingsNewTokenAtom,
+  settingsPasskeyBusyAtom,
+  settingsPasskeysAtom,
+  settingsRemovePasskeyAtom,
+  settingsSavingAtom,
+  settingsTokensAtom,
+  tokenLabelAtom,
+  tokenScopesAtom,
+  type ApiToken,
+  type NewToken,
+  type Passkey,
+} from '@/state/settings'
 
 const toBase64url = (value: ArrayBuffer) => {
   const bytes = new Uint8Array(value)

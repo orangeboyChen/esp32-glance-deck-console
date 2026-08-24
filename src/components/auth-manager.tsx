@@ -1,19 +1,21 @@
 'use client'
 
 import { Alert, Block, Button, Flexbox, Input, Text } from '@lobehub/ui'
-import { atom, useAtom } from 'jotai'
+import { useAtom } from 'jotai'
 import { KeyRound, LogIn } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 
-const loginEmailAtom = atom('')
-const loginPasswordAtom = atom('')
-const loginBusyAtom = atom(false)
-const loginErrorAtom = atom<string | null>(null)
-const setupEmailAtom = atom('')
-const setupPasswordAtom = atom('')
-const setupBusyAtom = atom(false)
-const setupErrorAtom = atom<string | null>(null)
+import {
+  loginBusyAtom,
+  loginEmailAtom,
+  loginErrorAtom,
+  loginPasswordAtom,
+  setupBusyAtom,
+  setupEmailAtom,
+  setupErrorAtom,
+  setupPasswordAtom,
+} from '@/state/auth'
 
 const decodeBase64url = (value: string) => {
   const binary = atob(value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (value.length % 4)) % 4))

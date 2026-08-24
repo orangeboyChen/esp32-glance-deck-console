@@ -1,43 +1,27 @@
 'use client'
 
 import { Alert, Block, Button, Checkbox, Empty, Flexbox, Input, Modal, Tag, Text, toast } from '@lobehub/ui'
-import { atom, useAtom } from 'jotai'
+import { useAtom } from 'jotai'
 import { Cpu, Download, RefreshCw, ShieldCheck } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useCallback, useEffect } from 'react'
 
 import { ConsolePageHeader } from './console-page-header'
 
-type FirmwareRelease = {
-  id: string
-  version: string
-  board_model: string
-  channel: 'stable' | 'beta' | 'test'
-  verified_at: string
-  manifest_url: string
-}
-type Device = {
-  id: string
-  name: string
-  board_model: string
-  firmware_version: string | null
-  status: string
-  ota_status: string | null
-  ota_job_id: string | null
-  power_source: string | null
-  battery_percent: number | null
-}
-
-const firmwareReleasesAtom = atom<FirmwareRelease[]>([])
-const firmwareDevicesAtom = atom<Device[]>([])
-const firmwareLoadingAtom = atom(true)
-const firmwareErrorAtom = atom<string | null>(null)
-const firmwareSelectionAtom = atom<{ release: FirmwareRelease; device: Device } | null>(null)
-const firmwareInstallingAtom = atom(false)
-const rolloutReleaseIdAtom = atom('')
-const rolloutPercentageAtom = atom('100')
-const rolloutDeviceIdsAtom = atom<string[]>([])
-const rolloutBusyAtom = atom(false)
+import {
+  firmwareDevicesAtom,
+  firmwareErrorAtom,
+  firmwareInstallingAtom,
+  firmwareLoadingAtom,
+  firmwareReleasesAtom,
+  firmwareSelectionAtom,
+  rolloutBusyAtom,
+  rolloutDeviceIdsAtom,
+  rolloutPercentageAtom,
+  rolloutReleaseIdAtom,
+  type Device,
+  type FirmwareRelease,
+} from '@/state/firmware'
 
 export const FirmwareManager = () => {
   const translate = useTranslations('Firmware')

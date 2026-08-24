@@ -35,7 +35,7 @@ import {
   selectedDeviceIdAtom,
   selectedPreviewIdAtom,
   type DevicePageConfiguration,
-} from './dashboard-state'
+} from '@/state/dashboard'
 import type { DeviceSummary } from '@/server/devices'
 
 type DeviceDashboardProps = {

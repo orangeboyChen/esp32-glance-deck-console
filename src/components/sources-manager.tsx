@@ -1,7 +1,7 @@
 'use client'
 
 import { Alert, Block, Button, Empty, Flexbox, Input, Segmented, Tag, Text, TextArea, toast } from '@lobehub/ui'
-import { atom, useAtom } from 'jotai'
+import { useAtom } from 'jotai'
 import { KeyRound, FileJson, Play, RefreshCw, Save } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { FormEvent } from 'react'
@@ -9,53 +9,30 @@ import { useCallback, useEffect } from 'react'
 
 import { ConsolePageHeader } from './console-page-header'
 
-type Source = {
-  id: string
-  name: string
-  base_url: string
-  request_path: string
-  method: 'GET' | 'POST'
-  mapper: Record<string, string>
-  refresh_interval_seconds: number
-  status: string
-  last_success_at: string | null
-  last_error: string | null
-}
-type ImportPreview = {
-  url: string
-  request_path: string
-  method: 'GET' | 'POST'
-  headers: Record<string, string>
-  body: unknown
-  refresh_interval_seconds: number | null
-  extractor_present: boolean
-  extractor_target_names: string[]
-  secret_variable_names: string[]
-  mapping_required: true
-}
-
-const defaultMapper = '{\n  "used": "$.used",\n  "total": "$.total",\n  "unit": "$.unit"\n}'
-
-const sourcesAtom = atom<Source[]>([])
-const sourcesLoadingAtom = atom(true)
-const sourcesSavingAtom = atom(false)
-const sourceTestingIdAtom = atom<string | null>(null)
-const soruxgptTokenAtom = atom('')
-const soruxgptConnectingAtom = atom(false)
-const soruxgptErrorAtom = atom<string | null>(null)
-const sourceImportTextAtom = atom('')
-const sourceImportPreviewAtom = atom<ImportPreview | null>(null)
-const sourceImportingAtom = atom(false)
-const sourceNameAtom = atom('')
-const sourceBaseUrlAtom = atom('')
-const sourceRequestPathAtom = atom('')
-const sourceMethodAtom = atom<'GET' | 'POST'>('GET')
-const sourceHeadersAtom = atom('{}')
-const sourceBodyTemplateAtom = atom('')
-const sourceSecretsAtom = atom('{}')
-const sourceMapperAtom = atom(defaultMapper)
-const sourceIntervalAtom = atom('900')
-const sourcesErrorAtom = atom<string | null>(null)
+import {
+  sourceBaseUrlAtom,
+  sourceBodyTemplateAtom,
+  sourceHeadersAtom,
+  sourceImportPreviewAtom,
+  sourceImportTextAtom,
+  sourceImportingAtom,
+  sourceIntervalAtom,
+  sourceMapperAtom,
+  sourceMethodAtom,
+  sourceNameAtom,
+  sourceRequestPathAtom,
+  sourceSecretsAtom,
+  sourceTestingIdAtom,
+  sourcesAtom,
+  sourcesErrorAtom,
+  sourcesLoadingAtom,
+  sourcesSavingAtom,
+  soruxgptConnectingAtom,
+  soruxgptErrorAtom,
+  soruxgptTokenAtom,
+  type ImportPreview,
+  type Source,
+} from '@/state/sources'
 
 export const SourcesManager = () => {
   const translate = useTranslations('Sources')

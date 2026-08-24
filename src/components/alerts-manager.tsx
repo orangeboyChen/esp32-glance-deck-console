@@ -1,7 +1,7 @@
 'use client'
 
 import { Alert, Block, Button, Checkbox, Empty, Flexbox, Input, Segmented, Tag, Text, toast } from '@lobehub/ui'
-import { atom, useAtom } from 'jotai'
+import { useAtom } from 'jotai'
 import { Bell, RefreshCw, Save, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { FormEvent } from 'react'
@@ -9,45 +9,29 @@ import { useCallback, useEffect } from 'react'
 
 import { ConsolePageHeader } from './console-page-header'
 
-type Source = { id: string; name: string }
-type Device = { id: string; name: string; active_page_id: string }
-type AlertRule = {
-  id: string
-  name: string
-  source_id: string
-  source_name?: string
-  field: string
-  operator: Operator
-  threshold: string
-  device_ids: string[]
-  page_ids: string[]
-  severity: string
-  message: string
-  test_only: boolean
-  enabled: boolean
-  active: boolean
-  created_at: string
-}
-type Operator = 'gt' | 'gte' | 'lt' | 'lte' | 'eq' | 'neq' | 'contains'
-
-const fields = ['plan_name', 'used', 'remaining', 'total', 'unit', 'resets_at', 'status'] as const
-
-const alertsSourcesAtom = atom<Source[]>([])
-const alertsDevicesAtom = atom<Device[]>([])
-const alertRulesAtom = atom<AlertRule[]>([])
-const alertsLoadingAtom = atom(true)
-const alertsSavingAtom = atom(false)
-const alertsErrorAtom = atom<string | null>(null)
-const alertNameAtom = atom('')
-const alertSourceIdAtom = atom('')
-const alertFieldAtom = atom<(typeof fields)[number]>('used')
-const alertOperatorAtom = atom<Operator>('gte')
-const alertThresholdAtom = atom('80')
-const alertDeviceIdsAtom = atom<string[]>([])
-const alertPageIdsAtom = atom('alerts')
-const alertSeverityAtom = atom('warning')
-const alertMessageAtom = atom('')
-const alertTestOnlyAtom = atom(false)
+import {
+  alertDeviceIdsAtom,
+  alertFieldAtom,
+  alertFields,
+  alertMessageAtom,
+  alertNameAtom,
+  alertOperatorAtom,
+  alertPageIdsAtom,
+  alertRulesAtom,
+  alertSeverityAtom,
+  alertSourceIdAtom,
+  alertTestOnlyAtom,
+  alertThresholdAtom,
+  alertsDevicesAtom,
+  alertsErrorAtom,
+  alertsLoadingAtom,
+  alertsSavingAtom,
+  alertsSourcesAtom,
+  type AlertRule,
+  type Device,
+  type Operator,
+  type Source,
+} from '@/state/alerts'
 
 export const AlertsManager = () => {
   const translate = useTranslations('Alerts')
@@ -215,8 +199,8 @@ export const AlertsManager = () => {
           </div>
           <div className="form-field">
             <label htmlFor="alert-field">{translate('field')}</label>
-            <select id="alert-field" value={field} onChange={(event) => setField(event.target.value as (typeof fields)[number])}>
-              {fields.map((item) => (
+            <select id="alert-field" value={field} onChange={(event) => setField(event.target.value as (typeof alertFields)[number])}>
+              {alertFields.map((item) => (
                 <option key={item} value={item}>
                   {translate(`field_${item}`)}
                 </option>

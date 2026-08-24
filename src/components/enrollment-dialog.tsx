@@ -1,21 +1,16 @@
 'use client'
 
 import { Button, Flexbox, Input, Modal, Text, toast } from '@lobehub/ui'
-import { atom, useAtom } from 'jotai'
+import { useAtom } from 'jotai'
 import { useTranslations } from 'next-intl'
 import type { FormEvent } from 'react'
-
+import { enrollmentErrorAtom, enrollmentNameAtom, enrollmentPairingCodeAtom, enrollmentSubmittingAtom } from '@/state/enrollment'
 import { useRouter } from '@/i18n/navigation'
 
 type EnrollmentDialogProps = {
   open: boolean
   onClose: () => void
 }
-
-const enrollmentNameAtom = atom('')
-const enrollmentPairingCodeAtom = atom('')
-const enrollmentSubmittingAtom = atom(false)
-const enrollmentErrorAtom = atom<string | null>(null)
 
 export const EnrollmentDialog = ({ open, onClose }: EnrollmentDialogProps) => {
   const translate = useTranslations('Dashboard')

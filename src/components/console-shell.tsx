@@ -1,11 +1,11 @@
 'use client'
 
 import { Button, Flexbox, Layout, Segmented, SideNav, Text, toast } from '@lobehub/ui'
-import { atom, useAtom } from 'jotai'
+import { useAtom } from 'jotai'
 import { Bell, Cpu, Database, LogOut, Monitor, PanelsTopLeft, Settings } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { type ReactNode } from 'react'
-
+import { loggingOutAtom } from '@/state/console-shell'
 import { usePathname, useRouter } from '@/i18n/navigation'
 
 type ConsoleShellProps = { children: ReactNode }
@@ -18,8 +18,6 @@ const navigation = [
   { href: '/firmware', icon: Cpu, key: 'firmware' },
   { href: '/settings', icon: Settings, key: 'settings' },
 ] as const
-
-const loggingOutAtom = atom(false)
 
 const isAuthenticationPath = (pathname: string) => {
   return pathname.endsWith('/login') || pathname.endsWith('/setup')
