@@ -272,7 +272,7 @@ export const SourcesManager = () => {
 
       <section className="sources-section" aria-labelledby="new-source-heading">
         <h2 id="new-source-heading">{translate('newSource')}</h2>
-        <Text type="secondary">{translate('newSourceDescription')}</Text>
+        <Text type="secondary">{translate('newSourceDescription', { variableName: '{{VARIABLE_NAME}}' })}</Text>
         <form className="source-form source-form-grid" onSubmit={saveSource}>
           <div className="form-field">
             <label htmlFor="source-name">{translate('name')}</label>

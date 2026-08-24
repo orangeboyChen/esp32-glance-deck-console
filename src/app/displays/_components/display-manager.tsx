@@ -323,7 +323,7 @@ export const DisplayManager = () => {
               )}
               <label htmlFor="display-lines">{translate('displayLines')}</label>
               <TextArea id="display-lines" rows={8} value={linesText} onChange={(event) => updateLines(event.target.value)} />
-              <Text type="secondary">{translate('linesHint')}</Text>
+              <Text type="secondary">{translate('linesHint', { lineShape: '{label, value}' })}</Text>
               <Button
                 icon={Trash2}
                 disabled={activePage.page_id === 'system' || pages.length <= 2}

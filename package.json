@@ -26,6 +26,7 @@
     "drizzle-orm": "^0.45.2",
     "jotai": "^2.20.2",
     "lucide-react": "^1.31.0",
+    "motion": "^12.43.0",
     "mqtt": "^5.15.2",
     "next": "16.0.10",
     "next-intl": "^4.13.6",

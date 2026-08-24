@@ -7,6 +7,15 @@ import './styles.scss'
 import { ConsoleShell } from '@/app/_components/console-shell'
 import { Providers } from './providers'
 
+const themeBootstrapScript = `(() => {
+  try {
+    const stored = localStorage.getItem('glance-deck-theme')
+    const mode = stored === 'light' || stored === 'dark' ? stored : 'auto'
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    document.documentElement.dataset.consoleTheme = mode === 'auto' ? (prefersDark ? 'dark' : 'light') : mode
+  } catch {}
+})()`
+
 export const metadata: Metadata = {
   title: 'Glance Deck',
   description: 'ESP32 reflective display control plane',
@@ -17,7 +26,10 @@ const rootLayout = async ({ children }: Readonly<{ children: React.ReactNode }>)
   const messages = await getMessages()
 
   return (
-    <html lang={locale}>
+    <html lang={locale} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+      </head>
       <body className="antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <Providers>

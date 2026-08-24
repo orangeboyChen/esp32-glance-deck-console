@@ -1,12 +1,13 @@
 'use client'
 
-import { Flexbox, Layout, Segmented, SideNav, Text, toast } from '@lobehub/ui'
+import { Flexbox, Layout, Select, Text, ThemeSwitch, toast } from '@lobehub/ui'
 import { Button } from '@lobehub/ui/base-ui'
 import { useAtom } from 'jotai'
 import { Bell, Cpu, Database, LogOut, Monitor, PanelsTopLeft, Settings } from 'lucide-react'
-import { useLocale, useTranslations } from 'next-intl'
-import { type ReactNode } from 'react'
+import { useTranslations } from 'next-intl'
+import { useEffect, useState, type ReactNode } from 'react'
 import { loggingOutAtom } from '@/app/_components/console-shell-state'
+import { useConsoleTheme } from '@/app/theme-context'
 import { Api } from '@/lib/api-client'
 import { usePathname, useRouter } from '@/i18n/navigation'
 
@@ -21,6 +22,8 @@ const navigation = [
   { href: '/settings', icon: Settings, key: 'settings' },
 ] as const
 
+type LocalePreference = 'auto' | 'en' | 'zh-CN' | 'ja'
+
 const isAuthenticationPath = (pathname: string) => {
   return pathname.endsWith('/login') || pathname.endsWith('/setup')
 }
@@ -30,11 +33,31 @@ const isCurrentPath = (pathname: string, href: string) => {
 }
 
 export const ConsoleShell = ({ children }: ConsoleShellProps) => {
-  const locale = useLocale()
   const pathname = usePathname()
   const router = useRouter()
   const translate = useTranslations('Dashboard')
   const [loggingOut, setLoggingOut] = useAtom(loggingOutAtom)
+  const { setThemeMode, themeMode } = useConsoleTheme()
+  const [localePreference, setLocalePreference] = useState<LocalePreference>('auto')
+
+  useEffect(() => {
+    const storedLocale = window.localStorage.getItem('glance-deck-locale')
+    if (storedLocale === 'auto' || storedLocale === 'en' || storedLocale === 'zh-CN' || storedLocale === 'ja') {
+      setLocalePreference(storedLocale)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (localePreference !== 'auto') {
+      return
+    }
+    const handleLanguageChange = async () => {
+      await Api.setLocale('auto')
+      router.refresh()
+    }
+    window.addEventListener('languagechange', handleLanguageChange)
+    return () => window.removeEventListener('languagechange', handleLanguageChange)
+  }, [localePreference, router])
 
   if (isAuthenticationPath(pathname)) {
     return <>{children}</>
@@ -42,8 +65,11 @@ export const ConsoleShell = ({ children }: ConsoleShellProps) => {
 
   const navigate = (href: string) => router.push(href)
   const changeLocale = async (value: string) => {
+    const preference = value as LocalePreference
+    setLocalePreference(preference)
+    window.localStorage.setItem('glance-deck-locale', preference)
     try {
-      await Api.setLocale(value)
+      await Api.setLocale(preference)
       router.refresh()
     } catch {
       toast.error(translate('logoutFailed'))
@@ -61,15 +87,24 @@ export const ConsoleShell = ({ children }: ConsoleShellProps) => {
     }
   }
   const languageControl = (
-    <Segmented
+    <Select
       aria-label={translate('language')}
+      className="app-language-select"
       onChange={(value) => void changeLocale(String(value))}
       options={[
+        { label: translate('languageAuto'), value: 'auto' },
         { label: 'EN', value: 'en' },
         { label: '中文', value: 'zh-CN' },
         { label: '日本語', value: 'ja' },
       ]}
-      value={locale}
+      value={localePreference}
+    />
+  )
+  const themeControl = (
+    <ThemeSwitch
+      labels={{ auto: translate('themeAuto'), dark: translate('themeDark'), light: translate('themeLight') }}
+      onThemeSwitch={setThemeMode}
+      themeMode={themeMode}
     />
   )
 
@@ -86,59 +121,40 @@ export const ConsoleShell = ({ children }: ConsoleShellProps) => {
               {translate('controlPlane')}
             </Text>
           </Flexbox>
-          <nav aria-label={translate('controlPlane')} className="mobile-navigation">
+          <nav aria-label={translate('controlPlane')} className="app-navigation-desktop">
             {navigation.map(({ href, icon: Icon, key }) => (
               <Button
                 aria-current={isCurrentPath(pathname, href) ? 'page' : undefined}
                 icon={Icon}
                 key={href}
                 onClick={() => navigate(href)}
+                onFocus={() => router.prefetch(href)}
+                onPointerEnter={() => router.prefetch(href)}
                 size="large"
                 type={isCurrentPath(pathname, href) ? 'primary' : 'text'}
               >
                 {translate(key)}
               </Button>
             ))}
-            <Button icon={LogOut} loading={loggingOut} onClick={() => void logout()} size="large" type="text">
-              {translate('logout')}
-            </Button>
           </nav>
-          <div className="mobile-language-control">{languageControl}</div>
+          <div className="app-navigation-mobile">
+            <Select
+              aria-label={translate('controlPlane')}
+              onChange={(value) => navigate(String(value))}
+              options={navigation.map(({ href, key }) => ({ label: translate(key), value: href }))}
+              value={navigation.find(({ href }) => isCurrentPath(pathname, href))?.href ?? '/'}
+            />
+          </div>
+          <div className="app-toolbar-actions">
+            {themeControl}
+            {languageControl}
+            <Button icon={LogOut} loading={loggingOut} onClick={() => void logout()} size="large" type="text">
+              <span className="app-logout-label">{translate('logout')}</span>
+            </Button>
+          </div>
         </header>
       }
       headerHeight={64}
-      sidebar={
-        <aside aria-label={translate('controlPlane')} className="app-sidebar">
-          <SideNav
-            avatar={
-              <span aria-hidden className="app-mark app-mark-large">
-                <Monitor size={18} />
-              </span>
-            }
-            bottomActions={
-              <Flexbox gap={8}>
-                {languageControl}
-                <Button icon={LogOut} loading={loggingOut} onClick={() => void logout()} size="large" type="text">
-                  {translate('logout')}
-                </Button>
-              </Flexbox>
-            }
-            topActions={navigation.map(({ href, icon: Icon, key }) => (
-              <Button
-                aria-current={isCurrentPath(pathname, href) ? 'page' : undefined}
-                icon={Icon}
-                key={href}
-                onClick={() => navigate(href)}
-                size="large"
-                type={isCurrentPath(pathname, href) ? 'primary' : 'text'}
-              >
-                {translate(key)}
-              </Button>
-            ))}
-          />
-        </aside>
-      }
-      asideWidth={224}
     >
       <div className="app-content min-h-screen">{children}</div>
     </Layout>

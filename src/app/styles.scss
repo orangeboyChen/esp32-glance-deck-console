@@ -22,6 +22,26 @@
     --console-danger: #ff9b9b;
   }
 }
+:root[data-console-theme='light'] {
+  --console-canvas: #f2f5f3;
+  --console-surface: #ffffff;
+  --console-ink: #1d2925;
+  --console-secondary: #60706a;
+  --console-rule: rgb(38 64 53 / 16%);
+  --console-accent: #0b7a5c;
+  --console-danger: #d70015;
+  color-scheme: light;
+}
+:root[data-console-theme='dark'] {
+  --console-canvas: #101716;
+  --console-surface: #1b2522;
+  --console-ink: #edf4ef;
+  --console-secondary: #a7b8af;
+  --console-rule: rgb(222 242 230 / 18%);
+  --console-accent: #4cd3a5;
+  --console-danger: #ff9b9b;
+  color-scheme: dark;
+}
 * {
   box-sizing: border-box;
 }
@@ -74,16 +94,6 @@ h3 {
   min-height: 64px;
   padding: 0 24px;
 }
-.app-sidebar {
-  background: color-mix(in srgb, var(--console-surface) 78%, var(--console-canvas));
-  border-right: 1px solid var(--console-rule);
-  height: 100%;
-  padding: 20px 12px;
-  .ant-btn {
-    justify-content: flex-start;
-    width: 100%;
-  }
-}
 .app-mark {
   align-items: center;
   background: var(--console-accent);
@@ -104,11 +114,64 @@ h3 {
     var(--console-canvas);
   min-height: calc(100dvh - 64px);
 }
-.mobile-navigation {
-  display: none;
+.app-navigation-desktop {
+  align-items: center;
+  display: flex;
+  flex: 1 1 auto;
+  gap: 4px;
+  justify-content: center;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
-.mobile-language-control {
+.app-navigation-desktop .ant-btn {
+  flex: 0 0 auto;
+  min-height: 44px;
+}
+.app-navigation-mobile {
   display: none;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.app-navigation-mobile .ant-select {
+  width: 100%;
+}
+.app-toolbar-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+.app-language-select,
+.app-toolbar-actions .ant-select-selector {
+  min-width: 112px;
+}
+.app-toolbar-actions .ant-select-selection-item {
+  overflow: visible;
+  text-overflow: clip;
+}
+.route-loading {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 240px;
+}
+.route-loading-dot {
+  animation: route-loading-pulse 0.9s ease-in-out infinite alternate;
+  background: var(--console-accent);
+  border-radius: 999px;
+  height: 10px;
+  width: 10px;
+}
+@keyframes route-loading-pulse {
+  from {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.15);
+  }
 }
 .dashboard-shell,
 .sources-shell {
@@ -593,29 +656,12 @@ h3 {
   .app-toolbar-context {
     display: none;
   }
-  .mobile-navigation {
-    display: flex;
-    flex: 1 1 auto;
-    gap: 4px;
-    min-width: 0;
-    overflow-x: auto;
-    padding-bottom: 2px;
+  .app-navigation-desktop {
+    display: none;
   }
-  .mobile-navigation .ant-btn {
-    flex: 0 0 auto;
-    min-height: 44px;
-  }
-  .mobile-language-control {
+  .app-navigation-mobile {
     display: block;
-    flex: 0 0 auto;
-  }
-  .mobile-language-control .ant-segmented {
-    min-height: 44px;
-  }
-  .mobile-language-control .ant-segmented-item-label {
-    align-items: center;
-    display: flex;
-    min-height: 40px;
+    max-width: 220px;
   }
   .dashboard-header,
   .console-page-header {
@@ -629,6 +675,17 @@ h3 {
   }
 }
 @media (max-width: 760px) {
+  .app-brand .app-toolbar-context,
+  .app-logout-label {
+    display: none;
+  }
+  .app-navigation-mobile {
+    max-width: 160px;
+  }
+  .app-language-select,
+  .app-toolbar-actions .ant-select-selector {
+    min-width: 104px;
+  }
   .dashboard-shell,
   .sources-shell {
     padding: 32px 20px 64px;

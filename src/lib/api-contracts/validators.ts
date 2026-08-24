@@ -29,7 +29,7 @@ export const serializedPasskeyRegistrationSchema = z.object({
   type: z.literal('public-key'),
   clientExtensionResults: z.record(z.string(), z.json()),
 })
-export const localeRequestSchema = z.object({ locale: z.enum(routing.locales) })
+export const localeRequestSchema = z.object({ locale: z.union([z.literal('auto'), z.enum(routing.locales)]) })
 export const alertCreateRequestSchema = z.object({
   name: z.string().trim().min(1).max(128),
   source_id: z.uuid(),
