@@ -14,6 +14,10 @@ import type {
   ListFirmwareReleasesResponse,
   ListPasskeysResponse,
   ListReleasesResponse,
+  ListPageDefinitionsResponse,
+  PageDefinition,
+  PageDefinitionRequest,
+  PageTemplate,
   ListSourcesResponse,
   ListTokensResponse,
   LocaleRequest,
@@ -141,6 +145,14 @@ export class ApiClient {
   publishRelease = (payload: ReleaseRequest): Promise<PublishReleaseResponse> =>
     this.requestJson<ReleaseRequest, PublishReleaseResponse>('/v1/releases', payload, { method: 'POST' })
   listSources = () => this.request<ListSourcesResponse>('/v1/sources', { cache: 'no-store' })
+  listPages = () => this.request<ListPageDefinitionsResponse>('/v1/pages', { cache: 'no-store' })
+  listPageTemplates = () =>
+    this.request<{ templates: PageTemplate[] }>('/v1/page-templates', { cache: 'no-store' })
+  createPage = (payload: PageDefinitionRequest): Promise<{ page: PageDefinition }> =>
+    this.requestJson<PageDefinitionRequest, { page: PageDefinition }>('/v1/pages', payload, { method: 'POST' })
+  updatePage = (pageId: string, payload: PageDefinitionRequest): Promise<{ page: PageDefinition }> =>
+    this.requestJson<PageDefinitionRequest, { page: PageDefinition }>(this.resource('/v1/pages', pageId), payload, { method: 'PATCH' })
+  deletePage = (pageId: string) => this.request<null>(this.resource('/v1/pages', pageId), { method: 'DELETE' })
   connectSoruxgpt = (payload: ConnectSoruxgptRequest): Promise<ConnectSoruxgptResponse> =>
     this.requestJson<ConnectSoruxgptRequest, ConnectSoruxgptResponse>('/v1/sources/soruxgpt', payload, { method: 'POST' })
   previewCcSwitchImport = (payload: JsonValue): Promise<PreviewCcSwitchResponse> =>

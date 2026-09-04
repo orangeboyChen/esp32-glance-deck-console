@@ -10,6 +10,35 @@ export type DisplayDocument = {
   lines?: Array<{ label: string; value: string }>
 }
 export type DisplayPage = { page_id: string; document: DisplayDocument }
+export type PageProviderType = 'soruxgpt' | 'codex' | 'system' | 'custom'
+export type PageTemplate = {
+  id: string
+  provider_type: PageProviderType
+  name: string
+  description: string
+  requires_source: boolean
+  default_document: DisplayDocument
+}
+export type PageDefinition = {
+  id: string
+  page_id: string
+  name: string
+  provider_type: PageProviderType
+  template_id: string
+  source_id: string | null
+  document_template: DisplayDocument
+  created_at: string
+  updated_at: string
+}
+export type ListPageDefinitionsResponse = { pages: PageDefinition[] }
+export type PageDefinitionRequest = {
+  page_id: string
+  name: string
+  provider_type: PageProviderType
+  template_id: string
+  source_id?: string | null
+  document_template: DisplayDocument
+}
 export type ReleaseRequest = { active_page_id: string; pages: DisplayPage[]; device_ids: string[] }
 export type ListReleasesResponse = { releases: Array<{ id: string; version: number; page_id: string; created_at: string }> }
 export type PreviewReleaseResponse = { preview_svg: string; width: number; height: number }
