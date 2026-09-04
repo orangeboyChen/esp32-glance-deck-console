@@ -163,3 +163,12 @@ export const displayBindingRequestSchema = z.object({
   document_template: displayDocumentSchema,
   device_ids: z.array(z.string().regex(/^[a-z0-9-]{1,64}$/)).min(1),
 })
+export const pageProviderTypeSchema = z.enum(['soruxgpt', 'codex', 'system', 'custom'])
+export const pageDefinitionRequestSchema = z.object({
+  page_id: z.string().regex(/^[a-z0-9-]{1,64}$/),
+  name: z.string().trim().min(1).max(128),
+  provider_type: pageProviderTypeSchema,
+  template_id: z.string().regex(/^[a-z0-9-]{1,64}$/),
+  source_id: z.uuid().nullable().optional(),
+  document_template: displayDocumentSchema,
+})
