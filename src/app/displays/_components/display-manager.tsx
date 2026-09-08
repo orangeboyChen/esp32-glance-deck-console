@@ -257,7 +257,7 @@ export const DisplayManager = () => {
           Release history
         </Button>
       </div>
-      {error && <Alert className="page-alert" showIcon type="error" message={error} />}
+      {error && <Alert className="page-alert" showIcon type="error" title={error} />}
       {view === 'library' && (
         <>
           <Flexbox className="page-library-toolbar" horizontal align="center" justify="space-between" wrap="wrap" gap={12}>

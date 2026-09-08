@@ -50,7 +50,8 @@ export const LoginManager = () => {
       await Api.login({ email, password })
       finish()
     } catch (loginError) {
-      setError(loginError instanceof Error ? translate(loginError.message as 'invalidCredentials') : translate('loginFailed'))
+      const code = loginError instanceof Error ? loginError.message : 'loginFailed'
+      setError(translate.has(code) ? translate(code) : translate('loginFailed'))
     } finally {
       setBusy(false)
     }
@@ -93,9 +94,8 @@ export const LoginManager = () => {
       })
       finish()
     } catch (loginError) {
-      setError(
-        loginError instanceof Error ? translate(loginError.message as 'loginFailed' | 'passkeyUnsupported') : translate('loginFailed'),
-      )
+      const code = loginError instanceof Error ? loginError.message : 'loginFailed'
+      setError(translate.has(code) ? translate(code) : translate('loginFailed'))
     } finally {
       setBusy(false)
     }
@@ -112,7 +112,7 @@ export const LoginManager = () => {
           <h1>{translate('loginTitle')}</h1>
           <Text type="secondary">{translate('loginDescription')}</Text>
         </Flexbox>
-        {error && <Alert showIcon type="error" message={error} />}
+        {error && <Alert showIcon type="error" title={error} />}
         <form onSubmit={login}>
           <Flexbox gap={12}>
             <label htmlFor="login-email">{translate('email')}</label>
@@ -164,7 +164,8 @@ export const SetupManager = () => {
       await Api.setup({ email, password })
       router.replace('/')
     } catch (setupError) {
-      setError(setupError instanceof Error ? translate(setupError.message as 'setupFailed') : translate('setupFailed'))
+      const code = setupError instanceof Error ? setupError.message : 'setupFailed'
+      setError(translate.has(code) ? translate(code) : translate('setupFailed'))
     } finally {
       setBusy(false)
     }
@@ -175,7 +176,7 @@ export const SetupManager = () => {
         <Text className="eyebrow">Glance Deck</Text>
         <h1>{translate('setupTitle')}</h1>
         <Text type="secondary">{translate('setupDescription')}</Text>
-        {error && <Alert showIcon type="error" message={error} />}
+        {error && <Alert showIcon type="error" title={error} />}
         <form onSubmit={setup}>
           <Flexbox gap={12}>
             <label htmlFor="setup-email">{translate('email')}</label>

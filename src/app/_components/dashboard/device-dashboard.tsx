@@ -438,7 +438,7 @@ export const DeviceDashboard = ({ devices, summary }: DeviceDashboardProps) => {
           className="live-feedback"
           closable
           closeText={translate('closeNotice')}
-          message={commandFeedback.message || translate('refreshPreview')}
+          title={commandFeedback.message || translate('refreshPreview')}
           onClose={() => setCommandFeedback(null)}
           showIcon
           type={commandFeedback.phase === 'error' ? 'error' : commandFeedback.phase === 'accepted' ? 'success' : 'info'}

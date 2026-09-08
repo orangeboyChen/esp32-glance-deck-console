@@ -172,7 +172,7 @@ export const SettingsManager = () => {
         subtitle={translate('subtitle')}
         title={translate('title')}
       />
-      {error && <Alert className="settings-alert" message={error} showIcon type="error" />}
+      {error && <Alert className="settings-alert" title={error} showIcon type="error" />}
       {loading ? (
         <Text>{translate('loading')}</Text>
       ) : (
@@ -307,7 +307,7 @@ export const SettingsManager = () => {
         title={translate('tokenCreatedTitle')}
       >
         <Flexbox gap={12}>
-          <Alert showIcon type="warning" message={translate('tokenOnlyShownOnce')} />
+          <Alert showIcon type="warning" title={translate('tokenOnlyShownOnce')} />
           <Input readOnly value={newToken?.token ?? ''} />
         </Flexbox>
       </Modal>

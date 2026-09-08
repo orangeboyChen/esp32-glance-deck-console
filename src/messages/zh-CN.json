@@ -338,7 +338,16 @@
     "createAdministrator": "创建管理员",
     "setupFailed": "无法创建管理员账号。",
     "invalidCredentials": "邮箱或密码不正确。",
+    "invalid_credentials": "邮箱或密码不正确。",
     "loginFailed": "登录失败。",
+    "invalid_request": "请求被拒绝，请检查输入后重试。",
+    "database_unavailable": "控制平面数据库不可用。",
+    "already_initialized": "该控制平面已存在管理员。",
+    "verification_failed": "Passkey 验证失败。",
+    "authentication_unavailable": "Passkey 登录当前不可用。",
+    "challenge_expired": "Passkey 挑战已过期，请重试。",
+    "credential_not_found": "该 Passkey 未注册。",
+    "authentication_not_verified": "无法验证 Passkey 登录。",
     "passkeyUnsupported": "当前浏览器不支持 Passkey。"
   }
 }
