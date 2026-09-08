@@ -14,6 +14,7 @@ export const usageSources = schema.usageSources as typeof postgresqlSchema.usage
 export const sourceSnapshots = schema.sourceSnapshots as typeof postgresqlSchema.sourceSnapshots
 export const alertRules = schema.alertRules as typeof postgresqlSchema.alertRules
 export const displayBindings = schema.displayBindings as typeof postgresqlSchema.displayBindings
+export const displayPageDefinitions = schema.displayPageDefinitions as typeof postgresqlSchema.displayPageDefinitions
 export const devices = schema.devices as typeof postgresqlSchema.devices
 export const deviceEnrollmentRequests = schema.deviceEnrollmentRequests as typeof postgresqlSchema.deviceEnrollmentRequests
 export const deviceCommands = schema.deviceCommands as typeof postgresqlSchema.deviceCommands

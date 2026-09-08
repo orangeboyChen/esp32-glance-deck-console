@@ -192,6 +192,22 @@ export const displayBindings = pgTable('display_bindings', {
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
+export const displayPageDefinitions = pgTable(
+  'display_page_definitions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    page_id: varchar('page_id', { length: 64 }).notNull(),
+    name: varchar('name', { length: 128 }).notNull(),
+    provider_type: varchar('provider_type', { length: 32 }).notNull(),
+    template_id: varchar('template_id', { length: 64 }).notNull(),
+    source_id: uuid('source_id').references(() => usageSources.id, { onDelete: 'set null' }),
+    document_template: jsonb('document_template').notNull(),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex('display_page_definitions_page_id_unique').on(table.page_id)],
+)
+
 export const devices = pgTable('devices', {
   id: varchar('id', { length: 64 }).primaryKey(),
   name: varchar('name', { length: 128 }).notNull(),

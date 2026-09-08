@@ -1,0 +1,113 @@
+import type { PageTemplate } from './api-contracts'
+
+export const pageTemplates: PageTemplate[] = [
+  {
+    id: 'soruxgpt-token-usage',
+    provider_type: 'soruxgpt',
+    name: 'Token Usage',
+    description: 'Used, remaining, allowance, and reset time.',
+    requires_source: true,
+    default_document: {
+      title: 'Token balance',
+      subtitle: 'SoruxGPT',
+      icon: 'usage',
+      progress: { value: 0, max: 100, label: 'Used', unit: 'tokens' },
+      lines: [],
+    },
+  },
+  {
+    id: 'soruxgpt-plan-quota',
+    provider_type: 'soruxgpt',
+    name: 'Plan Quota',
+    description: 'Plan name and aggregated quota windows.',
+    requires_source: true,
+    default_document: {
+      title: 'Plan quota',
+      subtitle: 'SoruxGPT',
+      icon: 'usage',
+      progress: { value: 0, max: 100, label: 'Used', unit: 'tokens' },
+      lines: [],
+    },
+  },
+  {
+    id: 'soruxgpt-reset-countdown',
+    provider_type: 'soruxgpt',
+    name: 'Reset Countdown',
+    description: 'The next available reset and current status.',
+    requires_source: true,
+    default_document: { title: 'Next reset', subtitle: 'SoruxGPT', icon: 'usage', lines: [] },
+  },
+  {
+    id: 'codex-usage',
+    provider_type: 'codex',
+    name: 'Usage',
+    description: 'Codex usage and remaining allowance.',
+    requires_source: true,
+    default_document: {
+      title: 'Codex usage',
+      subtitle: 'Codex',
+      icon: 'usage',
+      progress: { value: 0, max: 100, label: 'Used', unit: 'tokens' },
+      lines: [],
+    },
+  },
+  {
+    id: 'codex-weekly-limit',
+    provider_type: 'codex',
+    name: 'Weekly Limit',
+    description: 'Weekly usage window and reset time.',
+    requires_source: true,
+    default_document: {
+      title: 'Weekly limit',
+      subtitle: 'Codex',
+      icon: 'usage',
+      progress: { value: 0, max: 100, label: 'Used', unit: 'tokens' },
+      lines: [],
+    },
+  },
+  {
+    id: 'system-wifi',
+    provider_type: 'system',
+    name: 'Wi-Fi',
+    description: 'Signal and connection status.',
+    requires_source: false,
+    default_document: { title: 'Wi-Fi', subtitle: 'Connection status', icon: 'wifi', lines: [] },
+  },
+  {
+    id: 'system-battery',
+    provider_type: 'system',
+    name: 'Battery',
+    description: 'Battery level and charging state.',
+    requires_source: false,
+    default_document: {
+      title: 'Battery',
+      subtitle: 'Power status',
+      icon: 'battery',
+      progress: { value: 0, max: 100, label: 'Charge', unit: '%' },
+      lines: [],
+    },
+  },
+  {
+    id: 'system-firmware',
+    provider_type: 'system',
+    name: 'Firmware',
+    description: 'Firmware version and device health.',
+    requires_source: false,
+    default_document: { title: 'Firmware', subtitle: 'Device health', icon: 'system', lines: [] },
+  },
+  {
+    id: 'custom-display',
+    provider_type: 'custom',
+    name: 'Custom Display',
+    description: 'A bounded page with your own labels and meters.',
+    requires_source: false,
+    default_document: { title: 'Custom page', subtitle: '', lines: [] },
+  },
+]
+
+export const providerLabels: Record<PageTemplate['provider_type'], string> = {
+  soruxgpt: 'SoruxGPT',
+  codex: 'Codex',
+  system: 'System status',
+  custom: 'Custom',
+}

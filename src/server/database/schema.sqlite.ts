@@ -148,6 +148,21 @@ export const displayBindings = sqliteTable('display_bindings', {
   device_ids: json<string[]>('device_ids').notNull(),
   created_at: createdAt(),
 })
+export const displayPageDefinitions = sqliteTable(
+  'display_page_definitions',
+  {
+    id: identifier('id').primaryKey(),
+    page_id: text('page_id').notNull(),
+    name: text('name').notNull(),
+    provider_type: text('provider_type').notNull(),
+    template_id: text('template_id').notNull(),
+    source_id: text('source_id').references(() => usageSources.id, { onDelete: 'set null' }),
+    document_template: json<unknown>('document_template').notNull(),
+    created_at: createdAt(),
+    updated_at: createdAt(),
+  },
+  (table) => [uniqueIndex('display_page_definitions_page_id_unique').on(table.page_id)],
+)
 export const firmwareReleases = sqliteTable(
   'firmware_releases',
   {
