@@ -338,7 +338,16 @@
     "createAdministrator": "Create administrator",
     "setupFailed": "Unable to create the administrator account.",
     "invalidCredentials": "The email or password is incorrect.",
+    "invalid_credentials": "The email or password is incorrect.",
     "loginFailed": "Unable to sign in.",
+    "invalid_request": "The request was rejected. Check your input and try again.",
+    "database_unavailable": "The control plane database is unavailable.",
+    "already_initialized": "This control plane already has an administrator.",
+    "verification_failed": "Passkey verification failed.",
+    "authentication_unavailable": "Passkey sign-in is unavailable right now.",
+    "challenge_expired": "The passkey challenge expired. Try again.",
+    "credential_not_found": "This passkey is not registered.",
+    "authentication_not_verified": "Passkey sign-in could not be verified.",
     "passkeyUnsupported": "This browser does not support passkeys."
   }
 }

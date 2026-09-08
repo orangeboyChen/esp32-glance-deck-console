@@ -255,7 +255,7 @@ export const SourcesManager = () => {
           <Alert
             showIcon
             type="info"
-            message={translate('importReview')}
+            title={translate('importReview')}
             description={
               <Flexbox gap={4}>
                 <Text>

@@ -242,7 +242,7 @@ export const AlertsManager = () => {
             <Checkbox checked={testOnly} onChange={setTestOnly}>
               {translate('testOnly')}
             </Checkbox>
-            {testOnly && <Alert showIcon type="warning" message={translate('testWarning')} />}
+            {testOnly && <Alert showIcon type="warning" title={translate('testWarning')} />}
           </div>
           {error && (
             <Text className="form-action" role="alert" type="danger">

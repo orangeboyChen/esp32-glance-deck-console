@@ -126,7 +126,7 @@ export const FirmwareManager = () => {
             {translate('refresh')}
           </Button>
         </Flexbox>
-        {error && <Alert message={error} showIcon type="error" />}
+        {error && <Alert title={error} showIcon type="error" />}
         {loading ? (
           <Text>{translate('loading')}</Text>
         ) : releases.length === 0 ? (
@@ -265,7 +265,7 @@ export const FirmwareManager = () => {
       >
         <Flexbox gap={12}>
           <Text>{selection && translate('confirmDescription', { device: selection.device.name, version: selection.release.version })}</Text>
-          <Alert showIcon type="warning" message={translate('confirmWarning')} />
+          <Alert showIcon type="warning" title={translate('confirmWarning')} />
         </Flexbox>
       </Modal>
     </main>

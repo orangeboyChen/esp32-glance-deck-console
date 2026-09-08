@@ -338,7 +338,16 @@
     "createAdministrator": "管理者を作成",
     "setupFailed": "管理者アカウントを作成できません。",
     "invalidCredentials": "メールアドレスまたはパスワードが正しくありません。",
+    "invalid_credentials": "メールアドレスまたはパスワードが正しくありません。",
     "loginFailed": "サインインできません。",
+    "invalid_request": "リクエストが拒否されました。入力内容を確認して再試行してください。",
+    "database_unavailable": "コントロールプレーンのデータベースを利用できません。",
+    "already_initialized": "このコントロールプレーンには既に管理者が存在します。",
+    "verification_failed": "パスキーの検証に失敗しました。",
+    "authentication_unavailable": "パスキーでのサインインは現在利用できません。",
+    "challenge_expired": "パスキーのチャレンジの有効期限が切れました。もう一度お試しください。",
+    "credential_not_found": "このパスキーは登録されていません。",
+    "authentication_not_verified": "パスキーでのサインインを検証できませんでした。",
     "passkeyUnsupported": "このブラウザはパスキーに対応していません。"
   }
 }
