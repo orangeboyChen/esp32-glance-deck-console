@@ -133,6 +133,8 @@ export const alertRules = sqliteTable('alert_rules', {
   enabled: integer('enabled', { mode: 'boolean' }).default(true).notNull(),
   test_only: integer('test_only', { mode: 'boolean' }).default(false).notNull(),
   active: integer('active', { mode: 'boolean' }).default(false).notNull(),
+  /** Page each targeted device displayed before the alert took over, keyed by device id. */
+  restore_page_ids: json<Record<string, string>>('restore_page_ids').notNull().default({}),
   last_value: json<unknown>('last_value'),
   last_evaluated_at: timestamp('last_evaluated_at'),
   last_triggered_at: timestamp('last_triggered_at'),

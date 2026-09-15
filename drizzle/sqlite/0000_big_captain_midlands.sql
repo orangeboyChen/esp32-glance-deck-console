@@ -20,6 +20,7 @@ CREATE TABLE `alert_rules` (
 	`enabled` integer DEFAULT true NOT NULL,
 	`test_only` integer DEFAULT false NOT NULL,
 	`active` integer DEFAULT false NOT NULL,
+	`restore_page_ids` text DEFAULT '{}' NOT NULL,
 	`last_value` text,
 	`last_evaluated_at` integer,
 	`last_triggered_at` integer,
