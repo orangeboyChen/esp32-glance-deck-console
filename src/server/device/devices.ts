@@ -23,6 +23,19 @@ export type DeviceSummary = {
   ota_job_id: string | null
 }
 
+/**
+ * Splits ids into batches so a single statement never exceeds a driver's bound-parameter limit.
+ * Batching by id keeps all of one device's rows in the same batch, so per-device ordering is
+ * preserved across batches.
+ */
+const chunk = <T>(values: T[], size: number): T[][] => {
+  const batches: T[][] = []
+  for (let index = 0; index < values.length; index += size) {
+    batches.push(values.slice(index, index + size))
+  }
+  return batches
+}
+
 export const listDevices = async (): Promise<DeviceSummary[]> => {
   const database = db
   if (!database) {
@@ -53,30 +66,47 @@ export const listDevices = async (): Promise<DeviceSummary[]> => {
       and(eq(displayReleasePages.release_id, displayReleases.id), eq(displayReleasePages.page_id, devices.active_page_id)),
     )
 
-  const snapshots = await database
-    .select({ values: sourceSnapshots.values, fetched_at: sourceSnapshots.fetched_at, mapper: usageSources.mapper })
-    .from(sourceSnapshots)
-    .innerJoin(usageSources, eq(sourceSnapshots.source_id, usageSources.id))
-    .where(inArray(usageSources.status, ['active', 'refreshing']))
-    .orderBy(desc(sourceSnapshots.fetched_at))
-    .limit(100)
+  const [snapshots, latestOtaJobs] = await Promise.all([
+    database
+      .select({ values: sourceSnapshots.values, fetched_at: sourceSnapshots.fetched_at, mapper: usageSources.mapper })
+      .from(sourceSnapshots)
+      .innerJoin(usageSources, eq(sourceSnapshots.source_id, usageSources.id))
+      .where(inArray(usageSources.status, ['active', 'refreshing']))
+      .orderBy(desc(sourceSnapshots.fetched_at))
+      .limit(100),
+    // One query for every device instead of one per device: the original per-device loop made the
+    // dashboard cost N+1 round trips, which dominates once there are real devices. Ids are chunked
+    // because drivers cap the number of bound parameters in a single statement.
+    rows.length
+      ? Promise.all(
+          chunk(rows.map((row) => row.id), 500).map((deviceIds) =>
+            database
+              .select({ device_id: otaJobs.device_id, id: otaJobs.id, status: otaJobs.status })
+              .from(otaJobs)
+              .where(inArray(otaJobs.device_id, deviceIds))
+              .orderBy(desc(otaJobs.created_at)),
+          ),
+        ).then((batches) => batches.flat())
+      : Promise.resolve([]),
+  ])
   const soruxgptSnapshot = snapshots.find((snapshot) => snapshot.mapper?.provider === 'soruxgpt_codex')
   const freshSoruxgptSnapshot =
     soruxgptSnapshot && Date.now() - soruxgptSnapshot.fetched_at.getTime() <= 30 * 60 * 1000 ? soruxgptSnapshot : null
   const latestSnapshot = freshSoruxgptSnapshot ? undefined : snapshots[0]
   const snapshot = freshSoruxgptSnapshot ?? latestSnapshot
 
-  return Promise.all(
-    rows.map(async (row) => {
-      const [otaJob] = await database
-        .select({ id: otaJobs.id, status: otaJobs.status })
-        .from(otaJobs)
-        .where(eq(otaJobs.device_id, row.id))
-        .orderBy(desc(otaJobs.created_at))
-        .limit(1)
-      return { ...row, source_values: snapshot?.values ?? null, ota_status: otaJob?.status ?? null, ota_job_id: otaJob?.id ?? null }
-    }),
-  )
+  // Rows arrive newest-first, so the first job seen for a device is its current one.
+  const otaJobByDevice = new Map<string, { id: string; status: string | null }>()
+  for (const job of latestOtaJobs) {
+    if (!otaJobByDevice.has(job.device_id)) {
+      otaJobByDevice.set(job.device_id, job)
+    }
+  }
+
+  return rows.map((row) => {
+    const otaJob = otaJobByDevice.get(row.id)
+    return { ...row, source_values: snapshot?.values ?? null, ota_status: otaJob?.status ?? null, ota_job_id: otaJob?.id ?? null }
+  })
 }
 
 export const dashboardSummary = async () => {

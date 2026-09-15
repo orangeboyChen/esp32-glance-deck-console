@@ -5,10 +5,11 @@ import { Button } from '@lobehub/ui/base-ui'
 import { useAtom } from 'jotai'
 import { Cpu, Download, RefreshCw, ShieldCheck } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 
 import { ConsolePageHeader } from '@/app/_components/console-page-header'
 import { Api } from '@/lib/api-client'
+import { useSessionLoad } from '@/lib/use-session-load'
 
 import {
   firmwareDevicesAtom,
@@ -45,15 +46,15 @@ export const FirmwareManager = () => {
       const [releaseResponse, deviceResponse] = await Promise.all([Api.listFirmwareReleases(), Api.listDevices()])
       setReleases(releaseResponse.releases)
       setDevices(deviceResponse.devices)
+      return true
     } catch {
       setError(translate('loadFailed'))
+      return false
     } finally {
       setLoading(false)
     }
   }, [translate, setDevices, setError, setLoading, setReleases])
-  useEffect(() => {
-    void load()
-  }, [load])
+  useSessionLoad('firmware', load)
 
   const startRollout = async () => {
     if (!rolloutReleaseId || !rolloutDeviceIds.length) {

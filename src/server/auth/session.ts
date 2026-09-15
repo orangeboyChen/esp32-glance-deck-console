@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto'
+import { randomBytes, createHash } from 'node:crypto'
 
 import argon2 from 'argon2'
 import { and, eq, gt } from 'drizzle-orm'
@@ -10,6 +10,38 @@ import { administrators, sessions } from '@/server/database/schema'
 
 const sessionCookieName = '__Host-glance_deck_session'
 const sessionDurationMs = 1000 * 60 * 60 * 24 * 30
+
+type Administrator = typeof administrators.$inferSelect
+
+/**
+ * Argon2 verification costs tens of milliseconds of blocking CPU, and the console pays it on every
+ * authenticated request: once to render a page and again for each API call the page makes on mount.
+ * A single tab switch therefore pays it several times over. Verified tokens are memoised briefly so
+ * the cost is incurred once per token per window instead of once per request.
+ *
+ * Only tokens that already passed Argon2 verification against the database in this process are
+ * cached, and the key is a SHA-256 digest of the presented token rather than the token itself, so a
+ * cache hit exposes nothing reusable to anyone who can read process memory. Entries never outlive
+ * the underlying session row, and `clearSession` purges the entry before clearing the cookie, so
+ * logout and revocation still take effect immediately.
+ */
+const verifiedSessionTtlMs = 30_000
+const verifiedSessionCacheMaxEntries = 1000
+const verifiedSessionCache = new Map<string, { administrator: Administrator; expiresAt: number }>()
+
+const cacheKeyFor = (token: string) => createHash('sha256').update(token).digest('hex')
+
+const rememberVerifiedSession = (cacheKey: string, administrator: Administrator, expiresAtMs: number) => {
+  // Map iterates in insertion order, so the first key is the oldest entry: this evicts the
+  // least-recently-seen session first, bounding the cache without a second data structure.
+  if (verifiedSessionCache.size >= verifiedSessionCacheMaxEntries) {
+    const oldestKey = verifiedSessionCache.keys().next()
+    if (!oldestKey.done) {
+      verifiedSessionCache.delete(oldestKey.value)
+    }
+  }
+  verifiedSessionCache.set(cacheKey, { administrator, expiresAt: expiresAtMs })
+}
 
 export const administratorExists = async () => {
   if (!db) {
@@ -69,10 +101,7 @@ export const createSession = async (administratorId: string) => {
   })
 }
 
-export const currentAdministrator = async () => {
-  if (!db) {
-    return undefined
-  }
+const readSessionToken = async () => {
   const token = (await cookies()).get(sessionCookieName)?.value
   if (!token) {
     return undefined
@@ -81,15 +110,50 @@ export const currentAdministrator = async () => {
   if (!tokenSelector || !tokenSecret || token.split('.').length !== 2) {
     return undefined
   }
+  return { token, tokenSecret, tokenSelector }
+}
+
+export const currentAdministrator = async () => {
+  if (!db) {
+    return undefined
+  }
+  const sessionToken = await readSessionToken()
+  if (!sessionToken) {
+    return undefined
+  }
+  const { token, tokenSecret, tokenSelector } = sessionToken
+
+  const cacheKey = cacheKeyFor(token)
+  const cached = verifiedSessionCache.get(cacheKey)
+  if (cached) {
+    if (cached.expiresAt > Date.now()) {
+      return cached.administrator
+    }
+    verifiedSessionCache.delete(cacheKey)
+  }
 
   const [candidate] = await db
-    .select({ session_id: sessions.id, token_hash: sessions.token_hash, administrator: administrators })
+    .select({
+      session_id: sessions.id,
+      token_hash: sessions.token_hash,
+      expires_at: sessions.expires_at,
+      administrator: administrators,
+    })
     .from(sessions)
     .innerJoin(administrators, eq(sessions.administrator_id, administrators.id))
     .where(and(eq(sessions.token_selector, tokenSelector), gt(sessions.expires_at, new Date())))
     .limit(1)
 
-  return candidate && (await argon2.verify(candidate.token_hash, tokenSecret)) ? candidate.administrator : undefined
+  if (!candidate || !(await argon2.verify(candidate.token_hash, tokenSecret))) {
+    return undefined
+  }
+
+  const sessionExpiryMs = candidate.expires_at.getTime()
+  const cacheExpiryMs = Math.min(Date.now() + verifiedSessionTtlMs, sessionExpiryMs)
+  if (cacheExpiryMs > Date.now()) {
+    rememberVerifiedSession(cacheKey, candidate.administrator, cacheExpiryMs)
+  }
+  return candidate.administrator
 }
 
 export const clearSession = async () => {
@@ -98,6 +162,11 @@ export const clearSession = async () => {
   const [tokenSelector, tokenSecret, extraPart] = token?.split('.') ?? []
   if (db && tokenSelector && tokenSecret && !extraPart) {
     await db.delete(sessions).where(eq(sessions.token_selector, tokenSelector))
+  }
+  // Purge before clearing the cookie so a concurrent request can never be served from the cache
+  // once the session row is gone.
+  if (token) {
+    verifiedSessionCache.delete(cacheKeyFor(token))
   }
   cookieStore.delete(sessionCookieName)
 }

@@ -6,10 +6,11 @@ import { useAtom } from 'jotai'
 import { KeyRound, FileJson, Play, RefreshCw, Save } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { FormEvent } from 'react'
-import { useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 
 import { ConsolePageHeader } from '@/app/_components/console-page-header'
 import { Api } from '@/lib/api-client'
+import { useSessionLoad } from '@/lib/use-session-load'
 import type { JsonValue } from '@/lib/api-contracts'
 
 import {
@@ -63,15 +64,16 @@ export const SourcesManager = () => {
     try {
       const response = await Api.listSources()
       setSources(response.sources)
+      setError(null)
+      return true
     } catch {
       setError(translate('loadFailed'))
+      return false
     } finally {
       setLoading(false)
     }
   }, [translate, setError, setLoading, setSources])
-  useEffect(() => {
-    void loadSources()
-  }, [loadSources])
+  useSessionLoad('sources', loadSources)
 
   const connectSoruxgpt = async () => {
     if (!soruxgptToken.trim()) {

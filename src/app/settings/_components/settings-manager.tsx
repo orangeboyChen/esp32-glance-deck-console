@@ -5,12 +5,13 @@ import { Button } from '@lobehub/ui/base-ui'
 import { KeyRound, Plus, ShieldCheck, Trash2 } from 'lucide-react'
 import { useAtom } from 'jotai'
 import { useLocale, useTranslations } from 'next-intl'
-import { useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 
 import { ConsolePageHeader } from '@/app/_components/console-page-header'
 import { Api } from '@/lib/api-client'
 import type { JsonObject } from '@/lib/api-contracts'
 import { toAuthenticatorTransports } from '@/lib/passkey'
+import { useSessionLoad } from '@/lib/use-session-load'
 
 import {
   settingsErrorAtom,
@@ -77,15 +78,15 @@ export const SettingsManager = () => {
       const [tokenResponse, passkeyResponse] = await Promise.all([Api.listTokens(), Api.listPasskeys()])
       setTokens(tokenResponse.tokens)
       setPasskeys(passkeyResponse.passkeys)
+      return true
     } catch {
       setError(translate('loadFailed'))
+      return false
     } finally {
       setLoading(false)
     }
   }, [translate, setError, setLoading, setPasskeys, setTokens])
-  useEffect(() => {
-    void load()
-  }, [load])
+  useSessionLoad('settings', load)
 
   const createToken = async () => {
     if (!label.trim() || scopes.length === 0) {
