@@ -1,5 +1,7 @@
 import { atom } from 'jotai'
 
+import type { PageDefinition, Source } from '@/lib/api-contracts'
+
 export type DisplayIcon = 'usage' | 'battery' | 'wifi' | 'system' | 'home'
 export type Progress = { value: number; max: number; label?: string; unit?: string }
 export type DisplayDocument = {
@@ -23,6 +25,9 @@ export const systemPage: Page = {
 export const displayPagesAtom = atom<Page[]>([newPage(1), systemPage])
 export const displayActivePageIdAtom = atom('page-1')
 export const displayLinesTextAtom = atom('[]')
+export const displayLoadingAtom = atom(true)
+export const displayDefinitionsAtom = atom<PageDefinition[]>([])
+export const displaySourcesAtom = atom<Source[]>([])
 export const displayDevicesAtom = atom<Device[]>([])
 export const displaySelectedDevicesAtom = atom<string[]>([])
 export const displayReleasesAtom = atom<Release[]>([])

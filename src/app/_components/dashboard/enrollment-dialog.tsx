@@ -13,6 +13,7 @@ import {
 } from '@/app/_components/dashboard/enrollment-state'
 import { useRouter } from '@/i18n/navigation'
 import { Api } from '@/lib/api-client'
+import { invalidateSessionLoad } from '@/lib/use-session-load'
 
 type EnrollmentDialogProps = {
   open: boolean
@@ -52,6 +53,10 @@ export const EnrollmentDialog = ({ open, onClose }: EnrollmentDialogProps) => {
       const response = await Api.enrollDevice({ name: name.trim(), pairing_code: pairingCode, board_model: 'ESP32-S3-RLCD-4.2' })
       toast.success(translate('deviceAdded', { id: response.device_id }))
       finish()
+      // Firmware and Displays keep their own device lists, so they would otherwise keep targeting
+      // the pre-enrollment set until a full browser reload.
+      invalidateSessionLoad('firmware')
+      invalidateSessionLoad('displays')
       router.refresh()
     } catch (submissionError) {
       const reason = submissionError instanceof Error ? submissionError.message : 'enrollment_failed'

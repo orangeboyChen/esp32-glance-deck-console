@@ -3,23 +3,27 @@
 import { Alert, Block, Empty, Flexbox, Input, Modal, Select, Tag, Text, TextArea, toast } from '@lobehub/ui'
 import { Button } from '@lobehub/ui/base-ui'
 import { useAtom } from 'jotai'
-import { ArrowLeft, Copy, Eye, FilePlus2, Monitor, Pencil, Plus, Send, Trash2 } from 'lucide-react'
+import { ArrowLeft, Copy, Eye, FilePlus2, Monitor, Pencil, Plus, RefreshCw, Send, Trash2 } from 'lucide-react'
 import { useLocale } from 'next-intl'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { ConsolePageHeader } from '@/app/_components/console-page-header'
 import { Api } from '@/lib/api-client'
-import type { DisplayDocument, PageDefinition, PageProviderType, PageTemplate, Source } from '@/lib/api-contracts'
+import type { DisplayDocument, PageDefinition, PageProviderType, PageTemplate } from '@/lib/api-contracts'
 import { pageTemplates, providerLabels } from '@/lib/page-templates'
+import { useSessionLoad } from '@/lib/use-session-load'
 import {
   displayConfirmOpenAtom,
+  displayDefinitionsAtom,
   displayDevicesAtom,
   displayErrorAtom,
+  displayLoadingAtom,
   displayPreviewLoadingAtom,
   displayPreviewSvgAtom,
   displayPublishingAtom,
   displayReleasesAtom,
   displaySelectedDevicesAtom,
+  displaySourcesAtom,
 } from './state'
 
 type View = 'library' | 'types' | 'templates' | 'configure'
@@ -48,14 +52,16 @@ const cloneDocument = (document: DisplayDocument): DisplayDocument => JSON.parse
 export const DisplayManager = () => {
   const locale = useLocale()
   const [view, setView] = useState<View>('library')
-  const [pages, setPages] = useState<PageDefinition[]>([])
-  const [sources, setSources] = useState<Source[]>([])
   const [selectedProvider, setSelectedProvider] = useState<PageProviderType | null>(null)
   const [selectedTemplate, setSelectedTemplate] = useState<PageTemplate | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useAtom(displayErrorAtom)
+  // Pages and sources live in atoms rather than local state so that leaving and re-entering the tab
+  // does not discard them and force a refetch.
+  const [pages, setPages] = useAtom(displayDefinitionsAtom)
+  const [sources, setSources] = useAtom(displaySourcesAtom)
+  const [loading, setLoading] = useAtom(displayLoadingAtom)
   const [previewSvg, setPreviewSvg] = useAtom(displayPreviewSvgAtom)
   const [previewLoading, setPreviewLoading] = useAtom(displayPreviewLoadingAtom)
   const [devices, setDevices] = useAtom(displayDevicesAtom)
@@ -78,15 +84,15 @@ export const DisplayManager = () => {
       setDevices(deviceResponse.devices)
       setReleases(releaseResponse.releases.slice(-10).reverse())
       setError(null)
+      return true
     } catch {
       setError('Unable to load pages, sources, or devices.')
+      return false
     } finally {
       setLoading(false)
     }
-  }, [setDevices, setError, setReleases])
-  useEffect(() => {
-    void load()
-  }, [load])
+  }, [setDevices, setError, setLoading, setPages, setReleases, setSources])
+  useSessionLoad('displays', load)
 
   const startAdd = () => {
     setSelectedProvider(null)
@@ -238,9 +244,14 @@ export const DisplayManager = () => {
         subtitle="Choose a provider template, configure a saved source, and publish device-accurate pages."
         title="Pages"
         actions={
-          <Button icon={Plus} onClick={startAdd} type="primary">
-            Add page
-          </Button>
+          <Flexbox horizontal align="center" gap={10}>
+            <Button icon={RefreshCw} loading={loading} onClick={() => void load()}>
+              Refresh
+            </Button>
+            <Button icon={Plus} onClick={startAdd} type="primary">
+              Add page
+            </Button>
+          </Flexbox>
         }
       />
       <div className="page-workspace-tabs" role="tablist" aria-label="Pages sections">

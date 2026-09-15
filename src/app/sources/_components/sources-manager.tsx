@@ -6,10 +6,11 @@ import { useAtom } from 'jotai'
 import { KeyRound, FileJson, Play, RefreshCw, Save } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { FormEvent } from 'react'
-import { useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 
 import { ConsolePageHeader } from '@/app/_components/console-page-header'
 import { Api } from '@/lib/api-client'
+import { useSessionLoad, invalidateSessionLoad } from '@/lib/use-session-load'
 import type { JsonValue } from '@/lib/api-contracts'
 
 import {
@@ -63,15 +64,16 @@ export const SourcesManager = () => {
     try {
       const response = await Api.listSources()
       setSources(response.sources)
+      setError(null)
+      return true
     } catch {
       setError(translate('loadFailed'))
+      return false
     } finally {
       setLoading(false)
     }
   }, [translate, setError, setLoading, setSources])
-  useEffect(() => {
-    void loadSources()
-  }, [loadSources])
+  useSessionLoad('sources', loadSources)
 
   const connectSoruxgpt = async () => {
     if (!soruxgptToken.trim()) {
@@ -84,6 +86,7 @@ export const SourcesManager = () => {
       setSoruxgptToken('')
       toast.success(translate('soruxgptConnected'))
       await loadSources()
+      invalidateSessionLoad('displays')
     } catch (connectionError) {
       const code = connectionError instanceof Error ? connectionError.message : 'soruxgptConnectFailed'
       setSoruxgptError(translate.has(code) ? translate(code) : translate('soruxgptConnectFailed'))
@@ -138,6 +141,9 @@ export const SourcesManager = () => {
       setName('')
       setPreview(null)
       await loadSources()
+      // Displays reads its own copy of the source list, so it would otherwise keep offering the
+      // pre-creation set until a full browser reload.
+      invalidateSessionLoad('displays')
     } catch (saveError) {
       const code = saveError instanceof Error ? saveError.message : 'source_create_failed'
       setError(translate.has(code) ? translate(code) : translate('saveFailed'))

@@ -6,10 +6,11 @@ import { useAtom } from 'jotai'
 import { Bell, RefreshCw, Save, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import type { FormEvent } from 'react'
-import { useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 
 import { ConsolePageHeader } from '@/app/_components/console-page-header'
 import { Api } from '@/lib/api-client'
+import { useSessionLoad } from '@/lib/use-session-load'
 
 import {
   alertDeviceIdsAtom,
@@ -58,16 +59,16 @@ export const AlertsManager = () => {
       setAlerts(alertsResponse.rules)
       setSources(sourcesResponse.sources)
       setDevices(devicesResponse.devices)
+      setError(null)
+      return true
     } catch {
       setError(translate('loadFailed'))
+      return false
     } finally {
       setLoading(false)
     }
   }, [translate, setAlerts, setDevices, setError, setLoading, setSources])
-
-  useEffect(() => {
-    void load()
-  }, [load])
+  useSessionLoad('alerts', load)
 
   const toggleDevice = (id: string, checked: boolean) =>
     setDeviceIds((current) => (checked ? [...current, id] : current.filter((item) => item !== id)))
