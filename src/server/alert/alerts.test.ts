@@ -164,13 +164,7 @@ describe('alert page takeover and restoration', () => {
     reset()
     const summary = await evaluateAlertRules('source-1', { used: 95 })
     expect(summary).toEqual({ evaluated: 1, triggered: 1, restored: 0 })
-    expect(commands()).toEqual([
-      {
-        device_id: 'deck-a',
-        action: 'show_page',
-        payload: { page_id: 'alerts', alert_rule_id: 'rule-1', message: 'watch out', severity: 'warning' },
-      },
-    ])
+    expect(commands()).toEqual([{ device_id: 'deck-a', action: 'show_page', payload: { page_id: 'alerts' } }])
     expect(ruleUpdates()).toEqual([
       {
         active: true,
@@ -190,6 +184,25 @@ describe('alert page takeover and restoration', () => {
     expect(commands()).toEqual([])
   })
 
+  test('sends only page_id so the firmware accepts the command', async () => {
+    // The firmware parses CommandPayload with deny_unknown_fields and declares nothing but page_id
+    // and rotation_seconds, so any other key makes it discard the command entirely.
+    const allowedPayloadKeys = ['page_id', 'rotation_seconds']
+    reset()
+    await evaluateAlertRules('source-1', { used: 95 })
+    for (const command of commands()) {
+      expect(Object.keys(command.payload).sort()).toEqual(allowedPayloadKeys.filter((key) => key in command.payload))
+    }
+    await reset({
+      rules: [mkRule({ active: true, restore_page_ids: { 'deck-a': 'usage' } })],
+      devices: [mkDevice({ active_page_id: 'alerts', desired_page_id: 'alerts' })],
+    })
+    await evaluateAlertRules('source-1', { used: 10 })
+    for (const command of commands()) {
+      expect(command.payload).toEqual({ page_id: 'usage' })
+    }
+  })
+
   test('returns the device to the recorded page once the value falls below the threshold', async () => {
     reset({
       rules: [mkRule({ active: true, restore_page_ids: { 'deck-a': 'usage' } })],
@@ -197,9 +210,7 @@ describe('alert page takeover and restoration', () => {
     })
     const summary = await evaluateAlertRules('source-1', { used: 10 })
     expect(summary).toEqual({ evaluated: 1, triggered: 0, restored: 1 })
-    expect(commands()).toEqual([
-      { device_id: 'deck-a', action: 'show_page', payload: { page_id: 'usage', alert_rule_id: 'rule-1', reason: 'alert_resolved' } },
-    ])
+    expect(commands()).toEqual([{ device_id: 'deck-a', action: 'show_page', payload: { page_id: 'usage' } }])
     expect(ruleUpdates()[0].restore_page_ids).toEqual({})
     expect(deviceUpdates()).toEqual([{ desired_page_id: 'usage' }])
   })
@@ -210,9 +221,7 @@ describe('alert page takeover and restoration', () => {
       devices: [mkDevice({ active_page_id: 'system', desired_page_id: 'system' })],
     })
     await evaluateAlertRules('source-1', { used: 10 })
-    expect(commands()).toEqual([
-      { device_id: 'deck-a', action: 'show_page', payload: { page_id: 'system', alert_rule_id: 'rule-1', reason: 'alert_resolved' } },
-    ])
+    expect(commands()).toEqual([{ device_id: 'deck-a', action: 'show_page', payload: { page_id: 'system' } }])
   })
 
   test('falls back to another page when the recorded page is no longer renderable', async () => {
@@ -221,9 +230,7 @@ describe('alert page takeover and restoration', () => {
       devices: [mkDevice({ active_page_id: 'alerts', desired_page_id: 'alerts', enabled_page_ids: ['alerts', 'system'] })],
     })
     await evaluateAlertRules('source-1', { used: 10 })
-    expect(commands()).toEqual([
-      { device_id: 'deck-a', action: 'show_page', payload: { page_id: 'system', alert_rule_id: 'rule-1', reason: 'alert_resolved' } },
-    ])
+    expect(commands()).toEqual([{ device_id: 'deck-a', action: 'show_page', payload: { page_id: 'system' } }])
   })
 
   test('uses every release page when the device has no enabled subset', async () => {
@@ -289,9 +296,7 @@ describe('alert page takeover and restoration', () => {
     })
     const restored = await restoreAlertRulePages(ruleRows[0])
     expect(restored).toBe(1)
-    expect(commands()).toEqual([
-      { device_id: 'deck-a', action: 'show_page', payload: { page_id: 'usage', alert_rule_id: 'rule-1', reason: 'alert_resolved' } },
-    ])
+    expect(commands()).toEqual([{ device_id: 'deck-a', action: 'show_page', payload: { page_id: 'usage' } }])
     expect(ruleUpdates()).toEqual([{ restore_page_ids: {} }])
   })
 
