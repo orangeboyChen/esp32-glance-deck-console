@@ -14,6 +14,16 @@ import { useEffect } from 'react'
 const loadedKeys = new Set<string>()
 
 /**
+ * Forgets `key` so the owning manager refetches on its next mount.
+ *
+ * Call this from any mutation that changes data another tab reads. Without it, a tab that has
+ * already loaded once keeps showing data captured before the mutation.
+ */
+export const invalidateSessionLoad = (key: string) => {
+  loadedKeys.delete(key)
+}
+
+/**
  * Runs `load` the first time `key` is seen, and again on later mounts only if the previous attempt
  * resolved `false` to report failure.
  */

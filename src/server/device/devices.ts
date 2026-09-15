@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, inArray } from 'drizzle-orm'
+import { and, count, desc, eq, getTableName, gte, inArray, sql } from 'drizzle-orm'
 
 import { db } from '@/server/database/db'
 import { alertRules, devices, displayReleasePages, displayReleases, otaJobs, sourceSnapshots, usageSources } from '@/server/database/schema'
@@ -36,6 +36,14 @@ const chunk = <T>(values: T[], size: number): T[][] => {
   return batches
 }
 
+/**
+ * Self-join alias used to keep only each device's latest OTA job.
+ *
+ * Drizzle's `alias` is exported per dialect (sqlite-core / pg-core), and this module serves both, so
+ * picking one at runtime would break whichever type the other dialect expects. The correlation is
+ * expressed as a SQL fragment instead, which is identical in SQLite and PostgreSQL.
+ */
+const latestOtaJobAlias = 'latest_ota_job'
 export const listDevices = async (): Promise<DeviceSummary[]> => {
   const database = db
   if (!database) {
@@ -77,14 +85,32 @@ export const listDevices = async (): Promise<DeviceSummary[]> => {
     // One query for every device instead of one per device: the original per-device loop made the
     // dashboard cost N+1 round trips, which dominates once there are real devices. Ids are chunked
     // because drivers cap the number of bound parameters in a single statement.
+    //
+    // The NOT EXISTS filter keeps only each device's most recent job in SQL. Without it this would
+    // transfer every historical rollout and installation record — the repository has no OTA-job
+    // retention cleanup, so that grows without bound and would eventually undo the N+1 win.
     rows.length
       ? Promise.all(
           chunk(rows.map((row) => row.id), 500).map((deviceIds) =>
             database
               .select({ device_id: otaJobs.device_id, id: otaJobs.id, status: otaJobs.status })
               .from(otaJobs)
-              .where(inArray(otaJobs.device_id, deviceIds))
-              .orderBy(desc(otaJobs.created_at)),
+              .where(
+                and(
+                  inArray(otaJobs.device_id, deviceIds),
+                  sql`NOT EXISTS (
+                    SELECT 1 FROM ${sql.raw(getTableName(otaJobs))} AS ${sql.raw(latestOtaJobAlias)}
+                    WHERE ${sql.raw(latestOtaJobAlias)}.device_id = ${otaJobs.device_id}
+                      AND (
+                        ${sql.raw(latestOtaJobAlias)}.created_at > ${otaJobs.created_at}
+                        OR (
+                          ${sql.raw(latestOtaJobAlias)}.created_at = ${otaJobs.created_at}
+                          AND ${sql.raw(latestOtaJobAlias)}.id > ${otaJobs.id}
+                        )
+                      )
+                  )`,
+                ),
+              ),
           ),
         ).then((batches) => batches.flat())
       : Promise.resolve([]),
@@ -95,7 +121,8 @@ export const listDevices = async (): Promise<DeviceSummary[]> => {
   const latestSnapshot = freshSoruxgptSnapshot ? undefined : snapshots[0]
   const snapshot = freshSoruxgptSnapshot ?? latestSnapshot
 
-  // Rows arrive newest-first, so the first job seen for a device is its current one.
+  // At most one job per device survives the SQL filter, so this dedupe is a cheap backstop (for
+  // example when two jobs share both created_at and id) rather than the thing doing the work.
   const otaJobByDevice = new Map<string, { id: string; status: string | null }>()
   for (const job of latestOtaJobs) {
     if (!otaJobByDevice.has(job.device_id)) {

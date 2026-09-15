@@ -10,7 +10,7 @@ import { useCallback } from 'react'
 
 import { ConsolePageHeader } from '@/app/_components/console-page-header'
 import { Api } from '@/lib/api-client'
-import { useSessionLoad } from '@/lib/use-session-load'
+import { useSessionLoad, invalidateSessionLoad } from '@/lib/use-session-load'
 import type { JsonValue } from '@/lib/api-contracts'
 
 import {
@@ -86,6 +86,7 @@ export const SourcesManager = () => {
       setSoruxgptToken('')
       toast.success(translate('soruxgptConnected'))
       await loadSources()
+      invalidateSessionLoad('displays')
     } catch (connectionError) {
       const code = connectionError instanceof Error ? connectionError.message : 'soruxgptConnectFailed'
       setSoruxgptError(translate.has(code) ? translate(code) : translate('soruxgptConnectFailed'))
@@ -140,6 +141,9 @@ export const SourcesManager = () => {
       setName('')
       setPreview(null)
       await loadSources()
+      // Displays reads its own copy of the source list, so it would otherwise keep offering the
+      // pre-creation set until a full browser reload.
+      invalidateSessionLoad('displays')
     } catch (saveError) {
       const code = saveError instanceof Error ? saveError.message : 'source_create_failed'
       setError(translate.has(code) ? translate(code) : translate('saveFailed'))

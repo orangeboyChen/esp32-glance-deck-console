@@ -3,7 +3,7 @@
 import { Alert, Block, Empty, Flexbox, Input, Modal, Select, Tag, Text, TextArea, toast } from '@lobehub/ui'
 import { Button } from '@lobehub/ui/base-ui'
 import { useAtom } from 'jotai'
-import { ArrowLeft, Copy, Eye, FilePlus2, Monitor, Pencil, Plus, Send, Trash2 } from 'lucide-react'
+import { ArrowLeft, Copy, Eye, FilePlus2, Monitor, Pencil, Plus, RefreshCw, Send, Trash2 } from 'lucide-react'
 import { useLocale } from 'next-intl'
 import { useCallback, useMemo, useState } from 'react'
 
@@ -244,9 +244,14 @@ export const DisplayManager = () => {
         subtitle="Choose a provider template, configure a saved source, and publish device-accurate pages."
         title="Pages"
         actions={
-          <Button icon={Plus} onClick={startAdd} type="primary">
-            Add page
-          </Button>
+          <Flexbox horizontal align="center" gap={10}>
+            <Button icon={RefreshCw} loading={loading} onClick={() => void load()}>
+              Refresh
+            </Button>
+            <Button icon={Plus} onClick={startAdd} type="primary">
+              Add page
+            </Button>
+          </Flexbox>
         }
       />
       <div className="page-workspace-tabs" role="tablist" aria-label="Pages sections">

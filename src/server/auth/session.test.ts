@@ -55,12 +55,32 @@ const script = `
   await clearSession()
   const afterLogout = await currentAdministrator()
 
+  // Revocation on another replica: re-insert an equivalent session row and verify again so this
+  // process holds a warm cache entry, then revoke it the way a *different* replica would — by
+  // deleting the shared row without touching this process's cache. A warm cache must not keep the
+  // session alive, because the database is shared and is the authority on revocation.
+  cookieValue = undefined
+  await db.insert(sessions).values({
+    administrator_id: administrator.id,
+    token_selector: selector,
+    token_hash: await argon2.hash(secret, { type: argon2.argon2id }),
+    expires_at: new Date(Date.now() + 60_000),
+  })
+  cookieValue = selector + '.' + secret
+  const beforeForeignRevocation = await currentAdministrator()
+  await resolveRepeatedly(2)
+  const { eq } = await import('drizzle-orm')
+  await db.delete(sessions).where(eq(sessions.token_selector, selector))
+  const afterForeignRevocation = await currentAdministrator()
+
   console.log(JSON.stringify({
     noCookie: noCookie?.id ?? null,
     firstId: first?.id ?? null,
     ids: timings.map((entry) => entry.id),
     slowestMs: Math.max(...timings.map((entry) => entry.ms)),
     afterLogout: afterLogout?.id ?? null,
+    beforeForeignRevocation: beforeForeignRevocation?.id ?? null,
+    afterForeignRevocation: afterForeignRevocation?.id ?? null,
   }))
 `
 
@@ -85,6 +105,10 @@ describe('session verification cache', () => {
       expect(output.ids[0]).toBe(output.firstId)
       // Revocation is immediate: the cached entry is purged along with the session row.
       expect(output.afterLogout).toBeNull()
+      // A warm cache must never outlive the shared session row: revoking on another replica (by
+      // deleting the row without touching this process's cache) stops resolving immediately.
+      expect(output.beforeForeignRevocation).toBeTruthy()
+      expect(output.afterForeignRevocation).toBeNull()
     } finally {
       rmSync(directory, { recursive: true, force: true })
     }

@@ -11,27 +11,26 @@ import { administrators, sessions } from '@/server/database/schema'
 const sessionCookieName = '__Host-glance_deck_session'
 const sessionDurationMs = 1000 * 60 * 60 * 24 * 30
 
-type Administrator = typeof administrators.$inferSelect
-
 /**
  * Argon2 verification costs tens of milliseconds of blocking CPU, and the console pays it on every
  * authenticated request: once to render a page and again for each API call the page makes on mount.
  * A single tab switch therefore pays it several times over. Verified tokens are memoised briefly so
  * the cost is incurred once per token per window instead of once per request.
  *
- * Only tokens that already passed Argon2 verification against the database in this process are
- * cached, and the key is a SHA-256 digest of the presented token rather than the token itself, so a
- * cache hit exposes nothing reusable to anyone who can read process memory. Entries never outlive
- * the underlying session row, and `clearSession` purges the entry before clearing the cookie, so
- * logout and revocation still take effect immediately.
+ * This cache holds *only* the outcome of the Argon2 comparison, never the authority to accept a
+ * session. Every request still reads the session row from the shared database, so revocation on one
+ * replica takes effect on all of them immediately — the cache is what lets a replica skip the
+ * password hashing, not what lets it skip the database. Storing the Argon2 result also means a
+ * cache hit exposes nothing reusable to anyone who can read process memory: the key is a SHA-256
+ * digest of the presented token, and the Argon2 hash itself is held only in the database.
  */
 const verifiedSessionTtlMs = 30_000
 const verifiedSessionCacheMaxEntries = 1000
-const verifiedSessionCache = new Map<string, { administrator: Administrator; expiresAt: number }>()
+const verifiedSessionCache = new Map<string, { tokenHash: string; expiresAt: number }>()
 
 const cacheKeyFor = (token: string) => createHash('sha256').update(token).digest('hex')
 
-const rememberVerifiedSession = (cacheKey: string, administrator: Administrator, expiresAtMs: number) => {
+const rememberVerifiedSession = (cacheKey: string, tokenHash: string, expiresAtMs: number) => {
   // Map iterates in insertion order, so the first key is the oldest entry: this evicts the
   // least-recently-seen session first, bounding the cache without a second data structure.
   if (verifiedSessionCache.size >= verifiedSessionCacheMaxEntries) {
@@ -40,7 +39,7 @@ const rememberVerifiedSession = (cacheKey: string, administrator: Administrator,
       verifiedSessionCache.delete(oldestKey.value)
     }
   }
-  verifiedSessionCache.set(cacheKey, { administrator, expiresAt: expiresAtMs })
+  verifiedSessionCache.set(cacheKey, { tokenHash, expiresAt: expiresAtMs })
 }
 
 export const administratorExists = async () => {
@@ -124,35 +123,31 @@ export const currentAdministrator = async () => {
   const { token, tokenSecret, tokenSelector } = sessionToken
 
   const cacheKey = cacheKeyFor(token)
-  const cached = verifiedSessionCache.get(cacheKey)
-  if (cached) {
-    if (cached.expiresAt > Date.now()) {
-      return cached.administrator
-    }
-    verifiedSessionCache.delete(cacheKey)
-  }
 
+  // The session row is read from the shared database on every request, so a session revoked on any
+  // replica stops working everywhere at once. Only the Argon2 comparison below is cached.
   const [candidate] = await db
-    .select({
-      session_id: sessions.id,
-      token_hash: sessions.token_hash,
-      expires_at: sessions.expires_at,
-      administrator: administrators,
-    })
+    .select({ token_hash: sessions.token_hash, expires_at: sessions.expires_at, administrator: administrators })
     .from(sessions)
     .innerJoin(administrators, eq(sessions.administrator_id, administrators.id))
     .where(and(eq(sessions.token_selector, tokenSelector), gt(sessions.expires_at, new Date())))
     .limit(1)
 
-  if (!candidate || !(await argon2.verify(candidate.token_hash, tokenSecret))) {
+  if (!candidate) {
+    verifiedSessionCache.delete(cacheKey)
     return undefined
   }
 
-  const sessionExpiryMs = candidate.expires_at.getTime()
-  const cacheExpiryMs = Math.min(Date.now() + verifiedSessionTtlMs, sessionExpiryMs)
-  if (cacheExpiryMs > Date.now()) {
-    rememberVerifiedSession(cacheKey, candidate.administrator, cacheExpiryMs)
+  const cached = verifiedSessionCache.get(cacheKey)
+  const isVerified =
+    cached && cached.expiresAt > Date.now() && cached.tokenHash === candidate.token_hash
+      ? true
+      : await argon2.verify(candidate.token_hash, tokenSecret)
+  if (!isVerified) {
+    verifiedSessionCache.delete(cacheKey)
+    return undefined
   }
+  rememberVerifiedSession(cacheKey, candidate.token_hash, Math.min(Date.now() + verifiedSessionTtlMs, candidate.expires_at.getTime()))
   return candidate.administrator
 }
 
@@ -163,8 +158,8 @@ export const clearSession = async () => {
   if (db && tokenSelector && tokenSecret && !extraPart) {
     await db.delete(sessions).where(eq(sessions.token_selector, tokenSelector))
   }
-  // Purge before clearing the cookie so a concurrent request can never be served from the cache
-  // once the session row is gone.
+  // Deleting the shared row is what revokes the session; the local purge is only belt-and-braces,
+  // since lookups consult the database on every request anyway.
   if (token) {
     verifiedSessionCache.delete(cacheKeyFor(token))
   }
