@@ -165,6 +165,8 @@ export const alertRules = pgTable('alert_rules', {
   enabled: boolean('enabled').default(true).notNull(),
   test_only: boolean('test_only').default(false).notNull(),
   active: boolean('active').default(false).notNull(),
+  /** Page each targeted device displayed before the alert took over, keyed by device id. */
+  restore_page_ids: jsonb('restore_page_ids').$type<Record<string, string>>().notNull().default({}),
   last_value: jsonb('last_value'),
   last_evaluated_at: timestamp('last_evaluated_at', { withTimezone: true }),
   last_triggered_at: timestamp('last_triggered_at', { withTimezone: true }),

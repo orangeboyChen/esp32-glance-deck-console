@@ -24,6 +24,7 @@ CREATE TABLE "alert_rules" (
 	"enabled" boolean DEFAULT true NOT NULL,
 	"test_only" boolean DEFAULT false NOT NULL,
 	"active" boolean DEFAULT false NOT NULL,
+	"restore_page_ids" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"last_value" jsonb,
 	"last_evaluated_at" timestamp with time zone,
 	"last_triggered_at" timestamp with time zone,
