@@ -16,6 +16,8 @@ export type DashboardDevice = {
   source_values: Record<string, string | number | null> | null
   ota_status: string | null
   ota_job_id: string | null
+  /** Newest stable firmware version published for this device's board model, or null if there is none. */
+  available_firmware_version: string | null
 }
 export type ListDevicesResponse = { devices: DashboardDevice[] }
 export type EnrollmentRequest = { name: string; pairing_code: string; board_model: 'ESP32-S3-RLCD-4.2' }
