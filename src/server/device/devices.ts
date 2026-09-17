@@ -1,7 +1,7 @@
 import { and, count, desc, eq, getTableName, gte, inArray, sql } from 'drizzle-orm'
 
 import { db } from '@/server/database/db'
-import { alertRules, devices, displayReleasePages, displayReleases, otaJobs, sourceSnapshots, usageSources } from '@/server/database/schema'
+import { alertRules, devices, displayReleasePages, displayReleases, firmwareReleases, otaJobs, sourceSnapshots, usageSources } from '@/server/database/schema'
 
 export type DeviceSummary = {
   id: string
@@ -21,6 +21,8 @@ export type DeviceSummary = {
   source_values: Record<string, string | number | null> | null
   ota_status: string | null
   ota_job_id: string | null
+  /** Newest stable firmware version published for this device's board model, or null if there is none. */
+  available_firmware_version: string | null
 }
 
 /**
@@ -74,7 +76,7 @@ export const listDevices = async (): Promise<DeviceSummary[]> => {
       and(eq(displayReleasePages.release_id, displayReleases.id), eq(displayReleasePages.page_id, devices.active_page_id)),
     )
 
-  const [snapshots, latestOtaJobs] = await Promise.all([
+  const [snapshots, latestOtaJobs, stableReleases] = await Promise.all([
     database
       .select({ values: sourceSnapshots.values, fetched_at: sourceSnapshots.fetched_at, mapper: usageSources.mapper })
       .from(sourceSnapshots)
@@ -114,6 +116,14 @@ export const listDevices = async (): Promise<DeviceSummary[]> => {
           ),
         ).then((batches) => batches.flat())
       : Promise.resolve([]),
+    // Newest stable release per board model, newest first. Consumers such as the Home Assistant
+    // integration report an available update from this, and the OTA install path resolves the same
+    // channel and board model, so the two cannot disagree about what is installable.
+    database
+      .select({ board_model: firmwareReleases.board_model, version: firmwareReleases.version })
+      .from(firmwareReleases)
+      .where(eq(firmwareReleases.channel, 'stable'))
+      .orderBy(desc(firmwareReleases.created_at)),
   ])
   const soruxgptSnapshot = snapshots.find((snapshot) => snapshot.mapper?.provider === 'soruxgpt_codex')
   const freshSoruxgptSnapshot =
@@ -130,9 +140,23 @@ export const listDevices = async (): Promise<DeviceSummary[]> => {
     }
   }
 
+  // Rows arrive newest first, so the first version seen for a board model is the one to report.
+  const latestStableVersionByBoard = new Map<string, string>()
+  for (const release of stableReleases) {
+    if (!latestStableVersionByBoard.has(release.board_model)) {
+      latestStableVersionByBoard.set(release.board_model, release.version)
+    }
+  }
+
   return rows.map((row) => {
     const otaJob = otaJobByDevice.get(row.id)
-    return { ...row, source_values: snapshot?.values ?? null, ota_status: otaJob?.status ?? null, ota_job_id: otaJob?.id ?? null }
+    return {
+      ...row,
+      source_values: snapshot?.values ?? null,
+      ota_status: otaJob?.status ?? null,
+      ota_job_id: otaJob?.id ?? null,
+      available_firmware_version: latestStableVersionByBoard.get(row.board_model) ?? null,
+    }
   })
 }
 
