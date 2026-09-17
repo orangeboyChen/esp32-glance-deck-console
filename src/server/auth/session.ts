@@ -67,12 +67,25 @@ export const createInitialAdministrator = async (email: string, password: string
   })
 }
 
+/**
+ * A throwaway Argon2id hash verified when no administrator matches the submitted email. Without it an
+ * unknown email returns after a single indexed query while a known one pays a full Argon2
+ * verification, and that difference is large enough to time remotely and enumerate accounts. The
+ * digest is public and matches nobody, so it only ever costs time.
+ */
+let decoyPasswordHash: string | undefined
+const decoyHash = async () => {
+  decoyPasswordHash ??= await argon2.hash('glance-deck-decoy-password', { type: argon2.argon2id })
+  return decoyPasswordHash
+}
+
 export const authenticateAdministrator = async (email: string, password: string) => {
   if (!db) {
     return undefined
   }
   const [administrator] = await db.select().from(administrators).where(eq(administrators.email, email)).limit(1)
-  if (!administrator || !(await argon2.verify(administrator.password_hash, password))) {
+  const passwordMatches = await argon2.verify(administrator?.password_hash ?? (await decoyHash()), password)
+  if (!administrator || !passwordMatches) {
     return undefined
   }
   return administrator
@@ -156,7 +169,17 @@ export const clearSession = async () => {
   const token = cookieStore.get(sessionCookieName)?.value
   const [tokenSelector, tokenSecret, extraPart] = token?.split('.') ?? []
   if (db && tokenSelector && tokenSecret && !extraPart) {
-    await db.delete(sessions).where(eq(sessions.token_selector, tokenSelector))
+    // Verify the secret before deleting: the selector alone is not a bearer token, so allowing it to
+    // revoke the row would let anyone who learns a selector (a log, a leaked backup) log the
+    // administrator out.
+    const [session] = await db
+      .select({ token_hash: sessions.token_hash })
+      .from(sessions)
+      .where(eq(sessions.token_selector, tokenSelector))
+      .limit(1)
+    if (session && (await argon2.verify(session.token_hash, tokenSecret).catch(() => false))) {
+      await db.delete(sessions).where(eq(sessions.token_selector, tokenSelector))
+    }
   }
   // Deleting the shared row is what revokes the session; the local purge is only belt-and-braces,
   // since lookups consult the database on every request anyway.
