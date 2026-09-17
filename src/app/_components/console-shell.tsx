@@ -52,12 +52,17 @@ export const ConsoleShell = ({ children }: ConsoleShellProps) => {
       return
     }
     const handleLanguageChange = async () => {
-      await Api.setLocale('auto')
+      try {
+        await Api.setLocale('auto')
+      } catch {
+        toast.error(translate('localeFailed'))
+        return
+      }
       router.refresh()
     }
     window.addEventListener('languagechange', handleLanguageChange)
     return () => window.removeEventListener('languagechange', handleLanguageChange)
-  }, [localePreference, router])
+  }, [localePreference, router, translate])
 
   if (isAuthenticationPath(pathname)) {
     return <>{children}</>
@@ -72,7 +77,7 @@ export const ConsoleShell = ({ children }: ConsoleShellProps) => {
       await Api.setLocale(preference)
       router.refresh()
     } catch {
-      toast.error(translate('logoutFailed'))
+      toast.error(translate('localeFailed'))
     }
   }
   const logout = async () => {

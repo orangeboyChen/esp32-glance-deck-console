@@ -181,7 +181,12 @@ export const restoreAlertRulePages = async (rule: {
   }
   const previousPages = rule.restore_page_ids ?? {}
   const restored = await dispatch(await resolveAlertPageCommands(rule.id, alertPageId, rule.device_ids, previousPages))
-  await db.update(alertRules).set({ restore_page_ids: {} }).where(eq(alertRules.id, rule.id))
+  // Only drop the recorded map once the devices have actually been told to go back. Clearing it while
+  // no restore command went out would strand a device on the alert page with no record of where it
+  // came from, which is the exact state this function exists to prevent.
+  if (restored > 0) {
+    await db.update(alertRules).set({ restore_page_ids: {} }).where(eq(alertRules.id, rule.id))
+  }
   return restored
 }
 

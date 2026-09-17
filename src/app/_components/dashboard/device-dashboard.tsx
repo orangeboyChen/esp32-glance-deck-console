@@ -133,6 +133,9 @@ export const DeviceDashboard = ({ devices, summary }: DeviceDashboardProps) => {
   useEffect(() => {
     if (!selectedDeviceId) {
       setPageConfiguration(null)
+      // A cancelled run skips its own `setPageLoading(false)`, and this atom outlives the effect, so
+      // a device deselected mid-request would otherwise leave the page controls spinning forever.
+      setPageLoading(false)
       return
     }
     let cancelled = false

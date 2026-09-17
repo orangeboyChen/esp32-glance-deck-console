@@ -34,6 +34,17 @@ export const PATCH = async (request: Request, { params }: { params: Promise<{ jo
       if (job.power_source !== 'usb' && job.power_source !== 'usb_and_battery' && (job.battery_percent ?? 0) < 30) {
         throw new ApiRouteError('power_unsafe_for_ota', 409)
       }
+      // Matches the install path: a retried or double-submitted rollback must not enqueue two jobs
+      // for the same device, because the device only confirms one nonce and the other job never
+      // leaves `sent`.
+      const [duplicate] = await db
+        .select({ id: otaJobs.id })
+        .from(otaJobs)
+        .where(and(eq(otaJobs.device_id, job.device_id), eq(otaJobs.firmware_release_id, job.release_id), eq(otaJobs.status, 'queued')))
+        .limit(1)
+      if (duplicate) {
+        throw new ApiRouteError('ota_already_queued', 409)
+      }
       const [rollback] = await db
         .insert(otaJobs)
         .values({ device_id: job.device_id, firmware_release_id: job.release_id, nonce: createOtaNonce() })

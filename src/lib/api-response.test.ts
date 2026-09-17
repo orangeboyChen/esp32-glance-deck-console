@@ -27,7 +27,7 @@ describe('api response helpers', () => {
     expect(await response.text()).toBe('')
   })
 
-  test('serializes route errors and rethrows unknown errors', async () => {
+  test('serializes route errors and returns JSON for unknown errors', async () => {
     const errorResponse = await apiRoute(async () => {
       throw new ApiRouteError('invalid_request', 400)
     })(request)
@@ -35,11 +35,13 @@ describe('api response helpers', () => {
     expect(errorResponse.status).toBe(400)
     expect(await errorResponse.json()).toEqual({ error: 'invalid_request' })
 
-    await expect(
-      apiRoute(async () => {
-        throw new Error('unexpected')
-      })(request),
-    ).rejects.toThrow('unexpected')
+    // An unexpected throw must not become a Next.js HTML 500, which the API client cannot parse.
+    const unexpected = await apiRoute(async () => {
+      throw new Error('unexpected')
+    })(request)
+
+    expect(unexpected.status).toBe(500)
+    expect(await unexpected.json()).toEqual({ error: 'internal_error' })
   })
 
   test('validates JSON requests and hides validation details', async () => {

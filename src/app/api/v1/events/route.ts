@@ -9,7 +9,7 @@ export const GET = apiRoute<never>(async (request) => {
   const stream = new ReadableStream({
     start(controller) {
       const payload: EventReadyPayload = { status: 'connected' }
-      controller.enqueue(new TextEncoder().encode(`event: ready\\ndata: ${JSON.stringify(payload)}\\n\\n`))
+      controller.enqueue(new TextEncoder().encode(`event: ready\ndata: ${JSON.stringify(payload)}\n\n`))
       controller.close()
     },
   })
