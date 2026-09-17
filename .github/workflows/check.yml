@@ -25,4 +25,10 @@ jobs:
         run: bun install --no-save
       - run: bun run test:coverage
       - run: bun run build
-      - run: docker compose config --quiet
+      # Placeholders only validate that the compose file parses. Real deployments must supply
+      # generated secrets: compose fails when either variable is unset, which is the point.
+      - name: Validate compose file
+        env:
+          APP_MASTER_KEY: ci-placeholder-not-a-real-key
+          DEVICE_ASSET_SIGNING_KEY: ci-placeholder-not-a-real-key
+        run: docker compose config --quiet
