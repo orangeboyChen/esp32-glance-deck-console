@@ -132,13 +132,15 @@ const dispatch = async (commands: PendingCommand[]) => {
   return commands.length
 }
 
-/** Builds `show_page` commands returning each targeted device to the page it showed before the alert. */
-export const resolveAlertPageCommands = async (
-  ruleId: string,
-  alertPageId: string,
-  deviceIds: string[],
-  previousPages: Record<string, string>,
-) => {
+/**
+ * Builds `show_page` commands returning each targeted device to the page it showed before the alert.
+ *
+ * The payload carries only `page_id`. The firmware deserializes `CommandPayload` with
+ * `deny_unknown_fields` and declares nothing but `page_id` and `rotation_seconds`, so any extra key
+ * makes it discard the whole command. Alert bookkeeping stays in `device_commands`, which already
+ * records the device, action, and lifecycle timestamps.
+ */
+export const resolveAlertPageCommands = async (alertPageId: string, deviceIds: string[], previousPages: Record<string, string>) => {
   const targets = await loadTargetDevices(deviceIds)
   if (targets.length === 0) {
     return []
@@ -152,11 +154,7 @@ export const resolveAlertPageCommands = async (
     if (!pageId) {
       continue
     }
-    commands.push({
-      device_id: device.id,
-      action: 'show_page',
-      payload: { page_id: pageId, alert_rule_id: ruleId, reason: 'alert_resolved' },
-    })
+    commands.push({ device_id: device.id, action: 'show_page', payload: { page_id: pageId } })
   }
   return commands
 }
@@ -180,7 +178,7 @@ export const restoreAlertRulePages = async (rule: {
     return 0
   }
   const previousPages = rule.restore_page_ids ?? {}
-  const restored = await dispatch(await resolveAlertPageCommands(rule.id, alertPageId, rule.device_ids, previousPages))
+  const restored = await dispatch(await resolveAlertPageCommands(alertPageId, rule.device_ids, previousPages))
   // Only drop the recorded map once the devices have actually been told to go back. Clearing it while
   // no restore command went out would strand a device on the alert page with no record of where it
   // came from, which is the exact state this function exists to prevent.
@@ -217,13 +215,13 @@ export const evaluateAlertRules = async (sourceId: string, values: Record<string
       commands = targets.map((device) => ({
         device_id: device.id,
         action: 'show_page',
-        payload: { page_id: alertPageId, alert_rule_id: rule.id, message: rule.message, severity: rule.severity },
+        payload: { page_id: alertPageId },
       }))
       // Recorded before dispatching so a device that moves pages mid-alert returns to where it was
       // when the alert fired, which is what the administrator expects to get back.
       restorePageIds = targets.reduce((recorded, device) => mergeRestorePages(device, alertPageId, recorded), {})
     } else if (becameResolved && mutating) {
-      commands = await resolveAlertPageCommands(rule.id, alertPageId, rule.device_ids, previousPages)
+      commands = await resolveAlertPageCommands(alertPageId, rule.device_ids, previousPages)
     }
 
     await db
