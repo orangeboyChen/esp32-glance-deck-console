@@ -42,7 +42,10 @@ export const apiRoute = <ResponsePayload, RouteContext = undefined>(
       if (error instanceof ApiRouteError) {
         return apiResponse<ApiErrorResponse>({ error: error.message }, { status: error.status })
       }
-      throw error
+      // Unhandled failures still have to reach the client as JSON: Next.js renders a plain-text 500
+      // for a rejected route handler, which the API client cannot parse into an error message.
+      console.error('unhandled API route failure', error)
+      return apiResponse<ApiErrorResponse>({ error: 'internal_error' }, { status: 500 })
     }
   }
   return route as ApiRouteHandler

@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { currentAdministrator } from '@/server/auth/session'
 import { db } from '@/server/database/db'
 import { displayPageDefinitions } from '@/server/database/schema'
-import { ApiRouteError, requestJson } from '@/lib/api-response'
+import { ApiRouteError, apiRoute, noContentResponse, requestJson } from '@/lib/api-response'
 import { pageDefinitionRequestSchema } from '@/lib/api-contracts'
 import type { PageDefinitionRequest } from '@/lib/api-contracts'
 
@@ -23,9 +23,12 @@ export const PATCH = async (request: Request, context: { params: Promise<{ page_
       throw new ApiRouteError('database_unavailable', 503)
     }
     const pageId = await idFromParams(context)
+    // The path segment identifies the row; a `page_id` in the body would silently rename it.
+    const { page_id: ignoredPageId, ...updates } = payload
+    void ignoredPageId
     const [page] = await db
       .update(displayPageDefinitions)
-      .set({ ...payload, source_id: payload.source_id ?? null, updated_at: new Date() })
+      .set({ ...updates, source_id: payload.source_id ?? null, updated_at: new Date() })
       .where(eq(displayPageDefinitions.page_id, pageId))
       .returning()
     if (!page) {
@@ -34,15 +37,15 @@ export const PATCH = async (request: Request, context: { params: Promise<{ page_
     return { data: { page: publicDefinition(page) } }
   })(request)
 
-export const DELETE = async (request: Request, context: { params: Promise<{ page_id: string }> }) => {
-  void request
-  if (!(await currentAdministrator())) {
-    return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401, headers: { 'content-type': 'application/json' } })
-  }
-  if (!db) {
-    return new Response(JSON.stringify({ error: 'database_unavailable' }), { status: 503, headers: { 'content-type': 'application/json' } })
-  }
-  const pageId = await idFromParams(context)
-  await db.delete(displayPageDefinitions).where(eq(displayPageDefinitions.page_id, pageId))
-  return new Response(null, { status: 204 })
-}
+export const DELETE = async (request: Request, context: { params: Promise<{ page_id: string }> }) =>
+  apiRoute<never>(async () => {
+    if (!(await currentAdministrator())) {
+      throw new ApiRouteError('unauthorized', 401)
+    }
+    if (!db) {
+      throw new ApiRouteError('database_unavailable', 503)
+    }
+    const pageId = await idFromParams(context)
+    await db.delete(displayPageDefinitions).where(eq(displayPageDefinitions.page_id, pageId))
+    return noContentResponse()
+  })(request)
