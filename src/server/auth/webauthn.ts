@@ -6,6 +6,7 @@ import {
 } from '@simplewebauthn/server'
 import type { AuthenticationResponseJSON, AuthenticatorTransportFuture, RegistrationResponseJSON } from '@simplewebauthn/types'
 import { and, eq, gt } from 'drizzle-orm'
+import { cookies } from 'next/headers'
 
 import { db } from '@/server/database/db'
 import { passkeys, webauthnChallenges } from '@/server/database/schema'
@@ -13,6 +14,7 @@ import { passkeys, webauthnChallenges } from '@/server/database/schema'
 const rpId = process.env.WEBAUTHN_RP_ID ?? 'localhost'
 const rpName = 'ESP32 Glance Deck'
 const origin = process.env.APP_URL ?? 'http://localhost:3000'
+const passkeyChallengeCookieName = '__Host-glance_deck_passkey_challenge'
 
 export const beginPasskeyRegistration = async (administrator: { id: string; email: string }) => {
   if (!db) {
@@ -87,11 +89,24 @@ export const beginPasskeyAuthentication = async () => {
     throw new Error('database_unavailable')
   }
   const options = await generateAuthenticationOptions({ rpID: rpId, userVerification: 'preferred' })
-  await db.insert(webauthnChallenges).values({
-    administrator_id: null,
-    challenge: options.challenge,
-    purpose: 'authentication',
-    expires_at: new Date(Date.now() + 5 * 60 * 1000),
+  const [challenge] = await db
+    .insert(webauthnChallenges)
+    .values({
+      administrator_id: null,
+      challenge: options.challenge,
+      purpose: 'authentication',
+      expires_at: new Date(Date.now() + 5 * 60 * 1000),
+    })
+    .returning({ id: webauthnChallenges.id })
+  // Bind the challenge to the browser that requested it. Without this the finish step picks the
+  // oldest unexpired authentication challenge in the table, so one visitor's assertion could be
+  // verified against a challenge minted for a different visitor.
+  ;(await cookies()).set(passkeyChallengeCookieName, challenge.id, {
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: true,
+    path: '/',
+    maxAge: 5 * 60,
   })
   return options
 }
@@ -100,16 +115,31 @@ export const finishPasskeyAuthentication = async (response: AuthenticationRespon
   if (!db) {
     throw new Error('database_unavailable')
   }
+  const cookieStore = await cookies()
+  const challengeId = cookieStore.get(passkeyChallengeCookieName)?.value
+  if (!challengeId) {
+    throw new Error('challenge_expired')
+  }
+  // A challenge is single-use: consume it before verifying so a rejected assertion cannot be retried
+  // against the same value, and a failed attempt cannot leave it valid for the rest of its lifetime.
+  cookieStore.delete(passkeyChallengeCookieName)
   const [credential] = await db.select().from(passkeys).where(eq(passkeys.credential_id, response.id)).limit(1)
+  // Deliberately identical to every other failure below: distinguishing an unknown credential ID
+  // would let an unauthenticated caller enumerate which passkeys are registered.
   if (!credential) {
-    throw new Error('credential_not_found')
+    throw new Error('authentication_not_verified')
   }
 
   const [challenge] = await db
     .select()
     .from(webauthnChallenges)
-    .where(and(eq(webauthnChallenges.purpose, 'authentication'), gt(webauthnChallenges.expires_at, new Date())))
-    .orderBy(webauthnChallenges.created_at)
+    .where(
+      and(
+        eq(webauthnChallenges.purpose, 'authentication'),
+        eq(webauthnChallenges.id, challengeId),
+        gt(webauthnChallenges.expires_at, new Date()),
+      ),
+    )
     .limit(1)
   if (!challenge) {
     throw new Error('challenge_expired')
