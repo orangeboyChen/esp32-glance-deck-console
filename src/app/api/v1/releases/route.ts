@@ -107,13 +107,19 @@ export const GET = apiRoute<ListReleasesResponse>(async () => {
   if (!db) {
     throw new ApiRouteError('database_unavailable', 503)
   }
+  // Select only the listed columns: a bare select() also reads every release's 15 KB MONO1 bitmap
+  // and full preview SVG into memory, then discards them.
+  const rows = await db
+    .select({
+      id: displayReleases.id,
+      version: displayReleases.version,
+      page_id: displayReleases.page_id,
+      created_at: displayReleases.created_at,
+    })
+    .from(displayReleases)
+    .orderBy(asc(displayReleases.version))
   const response: ListReleasesResponse = {
-    releases: (await db.select().from(displayReleases).orderBy(asc(displayReleases.version))).map((release) => ({
-      id: release.id,
-      version: release.version,
-      page_id: release.page_id,
-      created_at: release.created_at.toISOString(),
-    })),
+    releases: rows.map((release) => ({ ...release, created_at: release.created_at.toISOString() })),
   }
   return { data: response }
 })

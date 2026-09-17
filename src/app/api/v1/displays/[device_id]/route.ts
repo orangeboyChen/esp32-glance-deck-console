@@ -2,7 +2,7 @@ import { and, desc, eq, inArray } from 'drizzle-orm'
 
 import { requireApiScope } from '@/server/auth/auth'
 import { db } from '@/server/database/db'
-import { devices, displayReleasePages, displayReleases, sourceSnapshots, usageSources } from '@/server/database/schema'
+import { devices, displayPageDefinitions, displayReleasePages, displayReleases, sourceSnapshots, usageSources } from '@/server/database/schema'
 import { ApiRouteError, apiRoute } from '@/lib/api-response'
 import type { DisplayDocument, DisplayResponse, JsonObject } from '@/lib/api-contracts'
 
@@ -32,6 +32,7 @@ export const GET = apiRoute<DisplayResponse, DisplayRouteContext>(async (request
       device_image: displayReleasePages.device_image,
       content_sha256: displayReleasePages.content_sha256,
       created_at: displayReleases.created_at,
+      source_id: displayPageDefinitions.source_id,
     })
     .from(devices)
     .innerJoin(displayReleases, eq(devices.release_id, displayReleases.id))
@@ -39,12 +40,15 @@ export const GET = apiRoute<DisplayResponse, DisplayRouteContext>(async (request
       displayReleasePages,
       and(eq(displayReleasePages.release_id, displayReleases.id), eq(displayReleasePages.page_id, devices.active_page_id)),
     )
+    .leftJoin(displayPageDefinitions, eq(displayPageDefinitions.page_id, devices.active_page_id))
     .where(eq(devices.id, deviceId))
     .limit(1)
 
   if (!display) {
     throw new ApiRouteError('display_not_found', 404)
   }
+  // Scoped to the source bound to this device's active page. Without the predicate every device gets
+  // whichever source happened to refresh last, so two devices on different pages show each other's data.
   const snapshots = await db
     .select({
       values: sourceSnapshots.values,
@@ -54,7 +58,12 @@ export const GET = apiRoute<DisplayResponse, DisplayRouteContext>(async (request
     })
     .from(sourceSnapshots)
     .innerJoin(usageSources, eq(sourceSnapshots.source_id, usageSources.id))
-    .where(inArray(usageSources.status, ['active', 'refreshing']))
+    .where(
+      and(
+        inArray(usageSources.status, ['active', 'refreshing']),
+        display.source_id ? eq(sourceSnapshots.source_id, display.source_id) : undefined,
+      ),
+    )
     .orderBy(desc(sourceSnapshots.fetched_at))
     .limit(100)
   const soruxgptSnapshot = snapshots.find((snapshot) => snapshot.mapper?.provider === 'soruxgpt_codex')
@@ -62,7 +71,9 @@ export const GET = apiRoute<DisplayResponse, DisplayRouteContext>(async (request
     soruxgptSnapshot && Date.now() - soruxgptSnapshot.fetched_at.getTime() <= 30 * 60 * 1000 ? soruxgptSnapshot : null
   const latestSnapshot = freshSoruxgptSnapshot ? undefined : snapshots[0]
   const snapshot = freshSoruxgptSnapshot ?? latestSnapshot
-  const { device_image: deviceImage, ...document } = display
+  // source_id is a join detail used to scope the snapshot query, not part of the display contract.
+  const { device_image: deviceImage, source_id: ignoredSourceId, ...document } = display
+  void ignoredSourceId
   const response: DisplayResponse = {
     ...document,
     document: document.document as DisplayDocument,
